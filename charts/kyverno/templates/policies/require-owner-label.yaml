@@ -1,0 +1,28 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-owner-label
+  annotations:
+    policies.kyverno.io/title: Require owner label
+    policies.kyverno.io/category: Metadata
+    policies.kyverno.io/severity: low
+spec:
+  validationFailureAction: {{ .Values.policies.action }}
+  background: true
+  rules:
+    - name: check-owner-label
+      match:
+        any:
+          - resources:
+              kinds: [Deployment, StatefulSet, DaemonSet]
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                {{- toYaml .Values.excludedNamespaces | nindent 16 }}
+      validate:
+        message: An `owner` label is required on all workloads.
+        pattern:
+          metadata:
+            labels:
+              owner: "?*"

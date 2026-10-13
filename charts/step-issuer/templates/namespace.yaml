@@ -1,0 +1,9 @@
+{{- if .Values.namespace.create }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace.name }}
+  labels:
+    skylab.io/component: step-issuer
+    skylab.io/wave: "0"
+{{- end }}

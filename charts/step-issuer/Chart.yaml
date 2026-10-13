@@ -1,0 +1,11 @@
+apiVersion: v2
+name: step-issuer
+description: Skylab wrapper for step-issuer. Lets cert-manager request certificates from step-ca.
+type: application
+version: 0.1.0
+appVersion: "0.11.0"
+dependencies:
+  - name: step-issuer
+    repository: https://smallstep.github.io/helm-charts/
+    # Pin deliberately; bump via a PR after reviewing release notes.
+    version: 1.11.0

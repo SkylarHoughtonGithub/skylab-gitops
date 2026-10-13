@@ -8,3 +8,11 @@ components:
     enabled: true
   external-secrets:
     enabled: true
+  step-ca:
+    enabled: true
+  step-issuer:
+    enabled: true
+  trust-manager:
+    enabled: true
+  kyverno:
+    enabled: true

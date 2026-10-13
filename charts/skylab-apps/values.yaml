@@ -64,3 +64,23 @@ components:
     wave: "-1"
     namespace: external-secrets
     project: platform
+  step-ca:
+    enabled: false
+    wave: "0"
+    namespace: step-ca
+    project: platform
+  step-issuer:
+    enabled: false
+    wave: "0"
+    namespace: step-issuer
+    project: platform
+  trust-manager:
+    enabled: false
+    wave: "0"
+    namespace: cert-manager
+    project: platform
+  kyverno:
+    enabled: false
+    wave: "0"
+    namespace: kyverno
+    project: platform

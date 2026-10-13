@@ -1,0 +1,8 @@
+namespace:
+  create: true
+  name: step-issuer
+
+step-issuer:
+  # Controller only. The StepClusterIssuer CR that references step-ca
+  # ships in a follow-up PR once step-ca has a usable provisioner secret.
+  installCRDs: true
