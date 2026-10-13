@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Everything Argo CD syncs: per-component wrapper charts, a chart that renders Applications in sync waves, per-cluster config files and workload definitions. This is the delivery hub of the Skylab platform — see `plan.md` for the full rework plan.
+Everything Argo CD syncs: per-component wrapper charts, a chart that renders Applications in sync waves, per-cluster config files and workload definitions. This is the delivery hub of the Skylab platform — see `plan.md` for the full rework plan and current cross-repo status.
 
-Fresh repo — nothing is built yet beyond the plan.
+**Current state (2026-10-13):** bootstrap scaffolding, `skylab-apps` renderer, CI pipeline (ct lint, helm-unittest, kubeconform), and wrapper charts through wave 0 — `argo-cd` (-2), `cert-manager` + `external-secrets` (-1), `step-ca` + `step-issuer` + `trust-manager` + `kyverno` (0, three base policies in Audit mode). Next: wave 1 (Crossplane + providers).
 
 ## Layer
 
