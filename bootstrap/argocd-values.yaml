@@ -44,4 +44,6 @@ applicationSet:
   enabled: true
 
 # Self-management: after bootstrap, Argo CD syncs itself through
-# the `argo-cd` wrapper chart in charts/argo-cd (added in a later wave -2 PR).
+# charts/argo-cd/values.yaml. Keep this file semantically identical
+# to charts/argo-cd/values.yaml under the `argo-cd:` key so the
+# first self-sync is a no-op.

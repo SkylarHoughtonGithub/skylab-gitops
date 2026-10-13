@@ -1,0 +1,44 @@
+namespace:
+  create: true
+  name: argocd
+
+# Must stay in sync with bootstrap/argocd-values.yaml so the first self-sync is a no-op.
+argo-cd:
+  global:
+    logging:
+      format: json
+
+  configs:
+    params:
+      server.insecure: false
+    cm:
+      # Required so sync waves wait on child Application health.
+      resource.customizations.health.argoproj.io_Application: |
+        hs = {}
+        hs.status = "Progressing"
+        hs.message = ""
+        if obj.status ~= nil then
+          if obj.status.health ~= nil then
+            hs.status = obj.status.health.status
+            if obj.status.health.message ~= nil then
+              hs.message = obj.status.health.message
+            end
+          end
+        end
+        return hs
+      application.resourceTrackingMethod: annotation
+    rbac:
+      policy.default: role:readonly
+
+  server:
+    ingress:
+      enabled: false
+
+  dex:
+    enabled: false
+
+  notifications:
+    enabled: false
+
+  applicationSet:
+    enabled: true
