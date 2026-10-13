@@ -1,0 +1,17 @@
+namespace:
+  create: true
+  name: crossplane-system
+
+crossplane:
+  args:
+    - --enable-usages
+    - --enable-realtime-compositions
+  # Keep CRD count low — v2 namespaced XRs don't need the deprecated claim CRDs.
+  resourcesCrossplane:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+  packageCache:
+    sizeLimit: 1Gi

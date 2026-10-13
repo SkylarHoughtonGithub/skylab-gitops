@@ -1,0 +1,6 @@
+apiVersion: v2
+name: crossplane-providers
+description: Skylab Crossplane Provider CRs. Installs the AWS and GCP provider families (with only the sub-providers Skylab's XRDs use) plus provider-kubernetes.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

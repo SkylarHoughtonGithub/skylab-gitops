@@ -1,0 +1,39 @@
+# Provider packages. Each becomes a pkg.crossplane.io/v1 Provider CR.
+# Keep this list minimal — one sub-provider per cloud per XRD-API Skylab exposes.
+# Bump versions deliberately after reviewing release notes.
+providers:
+  # AWS family — base + sub-providers used by Skylab XRDs.
+  - name: provider-family-aws
+    package: xpkg.upbound.io/upbound/provider-family-aws:v2.0.0
+  - name: provider-aws-ec2
+    package: xpkg.upbound.io/upbound/provider-aws-ec2:v2.0.0
+  - name: provider-aws-eks
+    package: xpkg.upbound.io/upbound/provider-aws-eks:v2.0.0
+  - name: provider-aws-iam
+    package: xpkg.upbound.io/upbound/provider-aws-iam:v2.0.0
+  - name: provider-aws-s3
+    package: xpkg.upbound.io/upbound/provider-aws-s3:v2.0.0
+  - name: provider-aws-rds
+    package: xpkg.upbound.io/upbound/provider-aws-rds:v2.0.0
+
+  # GCP family — base + sub-providers used by Skylab XRDs.
+  - name: provider-family-gcp
+    package: xpkg.upbound.io/upbound/provider-family-gcp:v2.0.0
+  - name: provider-gcp-compute
+    package: xpkg.upbound.io/upbound/provider-gcp-compute:v2.0.0
+  - name: provider-gcp-container
+    package: xpkg.upbound.io/upbound/provider-gcp-container:v2.0.0
+  - name: provider-gcp-storage
+    package: xpkg.upbound.io/upbound/provider-gcp-storage:v2.0.0
+  - name: provider-gcp-sql
+    package: xpkg.upbound.io/upbound/provider-gcp-sql:v2.0.0
+
+  # Kubernetes provider — creates the Argo CD cluster Secret during
+  # cluster handoff in skylab-crossplane compositions.
+  - name: provider-kubernetes
+    package: xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v0.17.0
+
+provider:
+  packagePullPolicy: IfNotPresent
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1

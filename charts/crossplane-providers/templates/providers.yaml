@@ -1,0 +1,16 @@
+{{- $root := . -}}
+{{- range .Values.providers }}
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: {{ .name }}
+  labels:
+    skylab.io/component: crossplane-providers
+    skylab.io/wave: "1"
+spec:
+  package: {{ .package }}
+  packagePullPolicy: {{ $root.Values.provider.packagePullPolicy }}
+  revisionActivationPolicy: {{ $root.Values.provider.revisionActivationPolicy }}
+  revisionHistoryLimit: {{ $root.Values.provider.revisionHistoryLimit }}
+{{- end }}

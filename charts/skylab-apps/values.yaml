@@ -84,3 +84,13 @@ components:
     wave: "0"
     namespace: kyverno
     project: platform
+  crossplane:
+    enabled: false
+    wave: "1"
+    namespace: crossplane-system
+    project: platform
+  crossplane-providers:
+    enabled: false
+    wave: "1"
+    namespace: crossplane-system
+    project: platform
