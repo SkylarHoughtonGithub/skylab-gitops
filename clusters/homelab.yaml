@@ -16,3 +16,7 @@ components:
     enabled: true
   kyverno:
     enabled: true
+  crossplane:
+    enabled: true
+  crossplane-providers:
+    enabled: true
