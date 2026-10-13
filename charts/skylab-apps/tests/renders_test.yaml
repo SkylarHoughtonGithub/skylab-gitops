@@ -1,0 +1,92 @@
+suite: skylab-apps renders
+templates:
+  - templates/appprojects.yaml
+  - templates/applications.yaml
+
+tests:
+  # AppProjects render in alphabetical order of their key in values:
+  # platform (0), tenants (1), workloads (2).
+  - it: renders three AppProjects, alphabetically ordered
+    template: templates/appprojects.yaml
+    asserts:
+      - hasDocuments:
+          count: 3
+      - documentIndex: 0
+        isKind:
+          of: AppProject
+      - documentIndex: 0
+        equal:
+          path: metadata.name
+          value: platform
+      - documentIndex: 1
+        equal:
+          path: metadata.name
+          value: tenants
+      - documentIndex: 2
+        equal:
+          path: metadata.name
+          value: workloads
+      - documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: argocd
+
+  - it: renders no Applications when nothing is enabled
+    template: templates/applications.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders only the enabled components
+    template: templates/applications.yaml
+    set:
+      components:
+        cert-manager:
+          enabled: true
+          wave: "-1"
+          namespace: cert-manager
+          project: platform
+        external-secrets:
+          enabled: false
+          wave: "-1"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - documentIndex: 0
+        isKind:
+          of: Application
+      - documentIndex: 0
+        equal:
+          path: metadata.name
+          value: cert-manager
+
+  - it: applies sync-wave, project, path and destination
+    template: templates/applications.yaml
+    set:
+      components:
+        cert-manager:
+          enabled: true
+          wave: "-1"
+          namespace: cert-manager
+          project: platform
+    asserts:
+      - documentIndex: 0
+        equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "-1"
+      - documentIndex: 0
+        equal:
+          path: spec.project
+          value: platform
+      - documentIndex: 0
+        equal:
+          path: spec.source.path
+          value: charts/cert-manager
+      - documentIndex: 0
+        equal:
+          path: spec.destination.namespace
+          value: cert-manager
+      - documentIndex: 0
+        equal:
+          path: spec.syncPolicy.automated.selfHeal
+          value: true

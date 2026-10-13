@@ -1,0 +1,97 @@
+name: charts
+
+on:
+  pull_request:
+    paths:
+      - 'charts/**'
+      - 'clusters/**'
+      - 'bootstrap/**'
+      - '.github/workflows/charts.yml'
+      - '.github/ct.yaml'
+  push:
+    branches: [main]
+    paths:
+      - 'charts/**'
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: ct lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: helm/chart-testing-action@v2
+      - name: Run ct lint
+        run: ct lint --config .github/ct.yaml
+
+  unittest:
+    name: helm-unittest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Install helm-unittest
+        run: helm plugin install --verify=false https://github.com/helm-unittest/helm-unittest
+      - name: Run unit tests
+        run: |
+          failed=0
+          for chart in charts/*/; do
+            if [ -d "$chart/tests" ]; then
+              echo "::group::$chart"
+              helm unittest "$chart" || failed=1
+              echo "::endgroup::"
+            fi
+          done
+          exit $failed
+
+  kubeconform:
+    name: kubeconform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Install kubeconform
+        run: |
+          curl -sfL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz \
+            | tar xz
+          sudo mv kubeconform /usr/local/bin/
+      - name: Render and validate
+        run: |
+          set -e
+          mkdir -p _render
+          for chart in charts/*/; do
+            name=$(basename "$chart")
+            if grep -q '^dependencies:' "$chart/Chart.yaml" 2>/dev/null; then
+              helm dependency update "$chart"
+            fi
+            # Render against the chart's own defaults.
+            helm template "$name" "$chart" > "_render/$name.yaml"
+          done
+          # Also render skylab-apps against each cluster values file so
+          # per-cluster overlays are validated too.
+          for cluster in clusters/*.yaml; do
+            cname=$(basename "$cluster" .yaml)
+            helm template "skylab-apps-$cname" charts/skylab-apps \
+              -f charts/skylab-apps/values.yaml \
+              -f "$cluster" \
+              > "_render/skylab-apps-$cname.yaml"
+          done
+          kubeconform \
+            -strict \
+            -ignore-missing-schemas \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            _render/
