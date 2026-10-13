@@ -1,0 +1,9 @@
+# trust-manager runs in the cert-manager namespace. The skylab-apps
+# component for this chart sets destination.namespace accordingly, so
+# no Namespace template is needed here.
+
+trust-manager:
+  namespace: cert-manager
+  app:
+    trust:
+      namespace: cert-manager

@@ -1,0 +1,22 @@
+namespace:
+  create: true
+  name: step-ca
+
+# Secrets (ca password, provisioner password) land here via ExternalSecret
+# in a follow-up PR once ClusterSecretStores are wired. For now the chart's
+# auto-generated secrets are used on first install.
+step-certificates:
+  inject:
+    enabled: false
+
+  ca:
+    # Default name used by templates and provisioners in Skylab.
+    name: skylab-ca
+    dns: step-ca.step-ca.svc.cluster.local
+
+  service:
+    type: ClusterIP
+
+  persistence:
+    enabled: true
+    size: 1Gi

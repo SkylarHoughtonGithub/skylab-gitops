@@ -1,0 +1,22 @@
+namespace:
+  create: true
+  name: kyverno
+
+# Policies default to Audit while the platform is still being built out.
+# Flip to Enforce once workloads are compliant.
+policies:
+  action: Audit
+
+# Namespaces excluded from every ClusterPolicy. System namespaces plus
+# Kyverno itself (self-admission loops).
+excludedNamespaces:
+  - kube-system
+  - kube-public
+  - kube-node-lease
+  - kyverno
+  - argocd
+
+kyverno:
+  features:
+    policyExceptions:
+      enabled: true
