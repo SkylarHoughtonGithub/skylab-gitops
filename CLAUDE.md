@@ -1,0 +1,65 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+Everything Argo CD syncs: per-component wrapper charts, a chart that renders Applications in sync waves, per-cluster config files and workload definitions. This is the delivery hub of the Skylab platform — see `plan.md` for the full rework plan.
+
+Fresh repo — nothing is built yet beyond the plan.
+
+## Layer
+
+**Delivery (Argo CD).** Owns applying Git state to clusters and deciding which cluster gets what. Never touches resources rendered by KubeVela.
+
+## Workflow
+
+- `main` is protected: direct pushes are rejected. Branch for every change and open a PR (self-merge, 0 approvals required).
+- No `Co-Authored-By` trailers in commit messages.
+- Pin `targetRevision` everywhere; no `HEAD`.
+
+## Target repo shape
+
+```
+bootstrap/       # Argo CD values + root Application, run once
+clusters/        # one file per cluster: labels, enabled components, overrides
+charts/
+  skylab-apps/   # renders Applications, AppProjects, sync waves
+  <component>/   # one wrapper chart per component (cert-manager, kubevela, …)
+workloads/       # platform-owned KubeVela Applications
+docs/adr/
+```
+
+## Architecture decisions
+
+**Wrapper chart per component.** Each `Chart.yaml` depends on the upstream chart and adds its own templates (Namespace, ExternalSecrets, ClusterIssuers). No platform-wide umbrella chart — each component keeps its own health and blast radius.
+
+**Sync waves instead of appset sprawl.** `skylab-apps` renders one Application per enabled component with a wave annotation. The `argoproj.io_Application` health-check Lua must be in `argocd-cm` so waves wait on child Application health (Argo stopped assessing it in 1.8).
+
+**Cluster-as-data.** One ApplicationSet with a cluster generator renders `skylab-apps` per cluster from labels on its Argo cluster Secret. Values layer: `values.yaml` → `values-<env>.yaml` → `clusters/<name>.yaml`, with `ignoreMissingValueFiles: true`.
+
+**OCI promotion.** CI pushes changed charts to GHCR as OCI. Dev tracks chart paths on `main`; prod pins OCI versions. Promotion is a one-line PR.
+
+## Sync wave reference
+
+| Wave | Components |
+| --- | --- |
+| -2 | Argo CD (self-managed) |
+| -1 | cert-manager, External Secrets Operator |
+| 0 | step-ca, step-issuer, trust-manager, ClusterSecretStores, Kyverno |
+| 1 | Crossplane and providers (AWS, GCP, Kubernetes) |
+| 2 | skylab-crossplane Configuration package |
+| 3 | KubeVela, kubevela-defs |
+| 4 | Gitea, act_runner |
+| 5 | Alloy, Prometheus, Loki, Tempo, Grafana, SLO rules |
+| 6 | Backstage, Headlamp, SonarQube |
+| 7 | Model gateway, HolmesGPT, kagent, MCP servers, tack-ai |
+| 10 | Workloads |
+
+## Cross-repo map
+
+- `skylab-terraform` — AWS/GCP foundations: IAM, Roles Anywhere, buckets, qdevice
+- `skylab-backstage` — catalog, templates, MCP actions
+- `skylab-crossplane` — cloud-agnostic XRDs; this repo installs the OCI package at wave 2
+- Gitea `platform/tenants` — scaffolder output; a second ApplicationSet watches it
+- `tack-ai` — governed remediation agent; chart ships from here at wave 7
