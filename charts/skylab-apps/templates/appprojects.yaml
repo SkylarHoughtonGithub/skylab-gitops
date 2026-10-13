@@ -1,0 +1,22 @@
+{{- range $name, $project := .Values.appProjects }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ $name }}
+  namespace: argocd
+spec:
+  description: {{ $project.description | quote }}
+  sourceRepos:
+    {{- toYaml $project.sourceRepos | nindent 4 }}
+  destinations:
+    {{- toYaml $project.destinations | nindent 4 }}
+  {{- with $project.clusterResourceWhitelist }}
+  clusterResourceWhitelist:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $project.namespaceResourceWhitelist }}
+  namespaceResourceWhitelist:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

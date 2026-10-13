@@ -1,0 +1,8 @@
+# Per-cluster overrides for the homelab hub.
+# Overlaid on top of charts/skylab-apps/values.yaml and values-<env>.yaml.
+
+components:
+  cert-manager:
+    enabled: true
+  external-secrets:
+    enabled: true

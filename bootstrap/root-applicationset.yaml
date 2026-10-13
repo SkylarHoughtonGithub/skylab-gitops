@@ -1,0 +1,48 @@
+# Root ApplicationSet: renders one `skylab-apps` Application per cluster
+# whose Argo CD cluster Secret carries `skylab.io/managed=true`.
+#
+# `skylab-apps` is a Helm chart that in turn renders one Application
+# per enabled component, with sync-wave annotations.
+#
+# Apply this once, by hand, after installing Argo CD. From then on
+# Argo CD manages everything.
+
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: skylab-apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            skylab.io/managed: "true"
+  template:
+    metadata:
+      name: 'skylab-apps-{{ .name }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/SkylarHoughtonGithub/skylab-gitops.git
+        targetRevision: main
+        path: charts/skylab-apps
+        helm:
+          ignoreMissingValueFiles: true
+          valueFiles:
+            - values.yaml
+            - 'values-{{ index .metadata.labels "skylab.io/env" }}.yaml'
+            - '../../clusters/{{ .name }}.yaml'
+      destination:
+        name: '{{ .name }}'
+        namespace: argocd
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

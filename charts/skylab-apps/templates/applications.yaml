@@ -1,0 +1,36 @@
+{{- $root := . -}}
+{{- range $name, $comp := .Values.components }}
+{{- if $comp.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $comp.wave | quote }}
+spec:
+  project: {{ default "platform" $comp.project }}
+  source:
+    repoURL: {{ default $root.Values.repoURL $comp.repoURL }}
+    targetRevision: {{ default $root.Values.targetRevision $comp.targetRevision }}
+    path: {{ include "skylab-apps.componentPath" (dict "name" $name "component" $comp) }}
+    helm:
+      ignoreMissingValueFiles: true
+      valueFiles:
+        - values.yaml
+        {{- range $f := $comp.extraValueFiles | default list }}
+        - {{ $f }}
+        {{- end }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ include "skylab-apps.componentNamespace" (dict "name" $name "component" $comp) }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+{{- end }}
+{{- end }}
