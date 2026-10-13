@@ -1,0 +1,14 @@
+# Wrapper defaults.
+namespace:
+  create: true
+  name: cert-manager
+
+# Upstream chart values live under the dependency alias.
+cert-manager:
+  crds:
+    enabled: true
+    keep: true
+  prometheus:
+    enabled: true
+    servicemonitor:
+      enabled: false  # enable in wave 5 once kube-prometheus-stack is up

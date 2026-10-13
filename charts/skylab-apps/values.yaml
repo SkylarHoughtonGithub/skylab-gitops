@@ -1,0 +1,61 @@
+# Default source for component charts. Overridden per env or per cluster.
+repoURL: https://github.com/SkylarHoughtonGithub/skylab-gitops.git
+targetRevision: main
+
+# AppProjects. Each is rendered to argocd namespace.
+appProjects:
+  platform:
+    description: Platform-owned components (observability, Gitea, KubeVela, Crossplane, AI).
+    sourceRepos:
+      - https://github.com/SkylarHoughtonGithub/skylab-gitops.git
+      - https://charts.jetstack.io
+      - https://charts.external-secrets.io
+      - https://argoproj.github.io/argo-helm
+    destinations:
+      - server: '*'
+        namespace: '*'
+    clusterResourceWhitelist:
+      - group: '*'
+        kind: '*'
+  tenants:
+    description: KubeVela Applications and infra requests scaffolded by Backstage.
+    sourceRepos:
+      - https://gitea.example.com/platform/tenants.git
+    destinations:
+      - server: '*'
+        namespace: '*'
+    namespaceResourceWhitelist:
+      - group: core.oam.dev
+        kind: '*'
+  workloads:
+    description: Platform-owned KubeVela Applications in this repo.
+    sourceRepos:
+      - https://github.com/SkylarHoughtonGithub/skylab-gitops.git
+    destinations:
+      - server: '*'
+        namespace: '*'
+    namespaceResourceWhitelist:
+      - group: core.oam.dev
+        kind: '*'
+
+# Components. Each becomes an Argo CD Application if enabled.
+# Enable per cluster via clusters/<name>.yaml.
+#
+# Fields:
+#   enabled           - whether this component renders an Application
+#   wave              - sync-wave annotation value (string)
+#   namespace         - target namespace; defaults to the component name
+#   project           - AppProject (default: platform)
+#   path              - repo path to the component chart (default: charts/<name>)
+#   extraValueFiles   - extra values files relative to the chart path
+components:
+  cert-manager:
+    enabled: false
+    wave: "-1"
+    namespace: cert-manager
+    project: platform
+  external-secrets:
+    enabled: false
+    wave: "-1"
+    namespace: external-secrets
+    project: platform

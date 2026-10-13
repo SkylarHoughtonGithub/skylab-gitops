@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
+
+# Helm artifacts
+charts/*/charts/
+charts/*/Chart.lock
+charts/*/*.tgz
