@@ -49,6 +49,11 @@ appProjects:
 #   path              - repo path to the component chart (default: charts/<name>)
 #   extraValueFiles   - extra values files relative to the chart path
 components:
+  argo-cd:
+    enabled: false
+    wave: "-2"
+    namespace: argocd
+    project: platform
   cert-manager:
     enabled: false
     wave: "-1"
