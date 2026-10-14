@@ -22,3 +22,7 @@ components:
     enabled: true
   kubevela:
     enabled: true
+  gitea:
+    enabled: true
+  act-runner:
+    enabled: true

@@ -1,0 +1,55 @@
+namespace:
+  create: true
+  name: gitea
+
+# Upstream chart values live under the dependency alias.
+#
+# Deferred (follow-up PRs or per-cluster values once wave-0 wiring is on):
+#  - OIDC provider wiring (Gitea → Backstage / Argo CD / Grafana SSO)
+#  - Ingress + Gateway API HTTPRoute with a step-ca-issued cert
+#  - Admin credentials via ExternalSecret (ESO ClusterSecretStore)
+#  - ServiceMonitor (wave 5, kube-prometheus-stack)
+gitea:
+  # Lightweight homelab shape: bundled single-node Postgres on a PVC and
+  # a single Valkey replica. Swap to Crossplane-managed Cloud SQL / RDS
+  # once skylab-crossplane ships the postgres XR.
+  postgresql-ha:
+    enabled: false
+  postgresql:
+    enabled: true
+    primary:
+      persistence:
+        enabled: true
+        size: 10Gi
+  valkey-cluster:
+    enabled: false
+  valkey:
+    enabled: true
+    architecture: standalone
+
+  persistence:
+    enabled: true
+    size: 10Gi
+
+  gitea:
+    config:
+      server:
+        # Set ROOT_URL to the public URL once Ingress + step-ca cert are
+        # wired. HTTP_PORT must be set explicitly — the http Service
+        # template reads it to populate targetPort, and the upstream
+        # chart's values default is empty.
+        HTTP_PORT: 3000
+        ROOT_URL: http://gitea.gitea.svc.cluster.local:3000/
+        DOMAIN: gitea.gitea.svc.cluster.local
+      service:
+        DISABLE_REGISTRATION: true
+      actions:
+        ENABLED: true
+
+  service:
+    http:
+      type: ClusterIP
+      port: 3000
+    ssh:
+      type: ClusterIP
+      port: 22

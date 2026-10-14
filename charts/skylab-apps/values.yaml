@@ -99,3 +99,13 @@ components:
     wave: "3"
     namespace: vela-system
     project: platform
+  gitea:
+    enabled: false
+    wave: "4"
+    namespace: gitea
+    project: platform
+  act-runner:
+    enabled: false
+    wave: "4"
+    namespace: gitea
+    project: platform

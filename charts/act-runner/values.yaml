@@ -1,0 +1,27 @@
+namespace:
+  create: true
+  name: gitea
+
+# Upstream chart values live under the dependency alias.
+#
+# The runner needs a registration token from Gitea to join. Until an ESO
+# ClusterSecretStore is flipped on and the token lives in AWS SM / GCP SM,
+# create the Secret manually:
+#   kubectl -n gitea create secret generic gitea-runner-token \
+#     --from-literal=token=<token from Gitea admin UI>
+# The runner Pod will CrashLoop until this Secret exists; that's a known
+# healthy-soon state after a fresh install, not a bug.
+actions:
+  enabled: true
+
+  giteaRootURL: http://gitea-http.gitea.svc.cluster.local:3000
+
+  # Reference the Secret above. The upstream chart mounts it at
+  # /data/.runner for the runner to read on startup.
+  existingSecret: gitea-runner-token
+  existingSecretKey: token
+
+  statefulset:
+    replicas: 1
+    persistence:
+      size: 10Gi

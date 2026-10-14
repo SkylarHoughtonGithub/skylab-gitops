@@ -1,0 +1,11 @@
+apiVersion: v2
+name: gitea
+description: Skylab wrapper for Gitea. Hub-cluster git host for scaffolder output (platform/tenants) and tenant repos. Postgres is bundled on a PVC.
+type: application
+version: 0.1.0
+appVersion: "1.27.0"
+dependencies:
+  - name: gitea
+    repository: https://dl.gitea.com/charts/
+    # Pin deliberately; bump via a PR after reviewing release notes.
+    version: 12.7.0
