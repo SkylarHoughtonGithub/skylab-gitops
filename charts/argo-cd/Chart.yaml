@@ -2,7 +2,7 @@ apiVersion: v2
 name: argo-cd
 description: Skylab wrapper for Argo CD. Enables self-management at wave -2 after bootstrap.
 type: application
-version: 0.1.1
+version: 0.1.2
 appVersion: "2.14.0"
 dependencies:
   - name: argo-cd
