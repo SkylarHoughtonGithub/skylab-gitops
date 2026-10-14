@@ -1,0 +1,47 @@
+suite: loki Namespace + datasource ConfigMap
+templates:
+  - templates/namespace.yaml
+  - templates/datasource.yaml
+
+tests:
+  - it: renders the datasource ConfigMap by default
+    template: templates/datasource.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+
+  - it: skips the Namespace by default (kube-prometheus-stack owns it)
+    template: templates/namespace.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders the Namespace when standalone
+    template: templates/namespace.yaml
+    set:
+      namespace.create: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Namespace
+      - equal:
+          path: metadata.name
+          value: monitoring
+
+  - it: skips the datasource ConfigMap when disabled
+    template: templates/datasource.yaml
+    set:
+      datasource.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: labels the datasource ConfigMap for the Grafana sidecar
+    template: templates/datasource.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["grafana_datasource"]
+          value: "1"

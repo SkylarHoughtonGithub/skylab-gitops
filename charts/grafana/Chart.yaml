@@ -1,0 +1,11 @@
+apiVersion: v2
+name: grafana
+description: Skylab wrapper for Grafana. Pre-wires Prometheus + Loki (and Tempo once it lands) as datasources via sidecar provisioning. Lives in the monitoring namespace alongside kube-prometheus-stack.
+type: application
+version: 0.1.0
+appVersion: "12.3.1"
+dependencies:
+  - name: grafana
+    repository: https://grafana.github.io/helm-charts
+    # Pin deliberately; bump via a PR after reviewing release notes.
+    version: 10.5.15

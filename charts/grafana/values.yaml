@@ -1,0 +1,69 @@
+# kube-prometheus-stack owns the monitoring namespace; this wrapper
+# only renders the Namespace resource when run standalone.
+namespace:
+  create: false
+  name: monitoring
+
+grafana:
+  # Dev-friendly default admin credentials. Production overlays swap this
+  # for an ExternalSecret-backed `grafana-admin` Secret and set
+  # `admin.existingSecret` here.
+  adminUser: admin
+  adminPassword: admin
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    accessModes: ["ReadWriteOnce"]
+
+  # ServiceMonitor is produced by the kube-prometheus-stack discovery
+  # fleet-wide selectors (see charts/kube-prometheus-stack/values.yaml).
+  serviceMonitor:
+    enabled: true
+
+  # Pre-wire the backends via provisioning sidecars so new charts (Loki,
+  # Tempo, Pyrra) land datasources + dashboards automatically through
+  # labeled ConfigMaps.
+  sidecar:
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      labelValue: "1"
+      searchNamespace: ALL
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+
+  # Default datasource for Prometheus (deployed by kube-prometheus-stack).
+  # Loki + Tempo datasources ship from their own wrapper charts as
+  # labeled ConfigMaps picked up by the sidecar above.
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          uid: prometheus
+          access: proxy
+          url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          isDefault: true
+          jsonData:
+            timeInterval: 30s
+
+  ingress:
+    enabled: false  # port-forward in dev; flip on with real DNS in prod
+
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s/"
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+    log:
+      mode: console
+      level: info
