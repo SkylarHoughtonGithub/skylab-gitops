@@ -8,3 +8,40 @@ external-secrets:
     port: 9443
   serviceMonitor:
     enabled: false  # enable in wave 5
+
+# Fleet-wide ClusterSecretStores. Each cluster opts in to the stores it
+# needs. Default-off so a fresh install does not block on missing
+# cloud identity.
+clusterSecretStores:
+  # AWS Secrets Manager via IAM Roles Anywhere.
+  #
+  # ESO has no first-class Roles Anywhere auth, so a credential refresher
+  # (aws_signing_helper or equivalent) runs out of band, presenting a
+  # step-ca-issued mTLS cert to Roles Anywhere and writing short-lived
+  # creds into the Secret referenced below. Terraform's roles-anywhere
+  # stack exposes the matching role + profile ARNs.
+  aws:
+    enabled: false
+    name: aws-secrets-manager
+    region: us-east-1
+    credentialsSecret:
+      name: eso-aws-credentials
+      namespace: external-secrets
+      accessKeyIdKey: access_key_id
+      secretAccessKeyKey: secret_access_key
+      # Roles Anywhere creds are session creds; set to "" to omit for
+      # long-lived access keys.
+      sessionTokenKey: session_token
+
+  # GCP Secret Manager via Workload Identity Federation (GKE workload
+  # identity, or the step-ca-rooted X.509 pool on the hub).
+  gcp:
+    enabled: false
+    name: gcp-secret-manager
+    projectID: ""
+    workloadIdentity:
+      clusterLocation: ""
+      clusterName: ""
+      serviceAccountRef:
+        name: external-secrets
+        namespace: external-secrets

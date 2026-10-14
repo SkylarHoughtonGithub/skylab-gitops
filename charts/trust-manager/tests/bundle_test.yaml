@@ -1,0 +1,39 @@
+suite: trust-manager Bundle
+templates:
+  - templates/bundle-step-ca.yaml
+
+tests:
+  - it: renders nothing by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders a Bundle when enabled
+    set:
+      bundles.stepCA.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Bundle
+      - equal:
+          path: apiVersion
+          value: trust.cert-manager.io/v1alpha1
+      - equal:
+          path: metadata.name
+          value: skylab-ca
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "1"
+      - equal:
+          path: spec.sources[0].secret.name
+          value: step-ca-certs
+      - equal:
+          path: spec.sources[0].secret.key
+          value: root_ca.crt
+      - equal:
+          path: spec.target.configMap.key
+          value: ca.crt
+      - equal:
+          path: spec.target.namespaceSelector.matchLabels["skylab.io/trust"]
+          value: enabled

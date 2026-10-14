@@ -47,7 +47,7 @@ Humans and agents only ever write to Git; Argo CD is the single path into the cl
 
 Progress through the shared build order:
 
-- [x] 1. **skylab-gitops** — bootstrap, skylab-apps renderer, CI pipeline, waves -2 → 1 landed. Next: close the deferred wave-0 wiring (now unblocked by terraform), then wave 2 pin or wave 3 KubeVela.
+- [x] 1. **skylab-gitops** — bootstrap, skylab-apps renderer, CI pipeline, waves -2 → 1 landed; wave-0 wiring resources shipped as values-gated opt-ins (StepClusterIssuer, ACME ClusterIssuer, trust-manager Bundle, ESO ClusterSecretStores for AWS SM + GCP SM, step-ca provisioner ExternalSecret). Next: homelab flips the gates on with real ARNs/KIDs, then wave 2 pin or wave 3 KubeVela.
 - [x] 2. **skylab-terraform** — substantively complete. Seven stacks (bootstrap, identity, storage, roles-anywhere, crossplane, qdevice, gcp-identity) and five modules (aws-github-oidc, aws-object-storage, aws-roles-anywhere, aws-ecs-service, gcp-workload-identity) with fmt/validate/tflint/trivy CI. Modules consistently cloud-prefixed. Follow-ups below.
 - [ ] 3. **skylab-backstage** — not started.
 - [ ] 4. **skylab-crossplane** — not started. The gitops wave 2 Application will pin an OCI package built from this repo.
@@ -56,14 +56,16 @@ Progress through the shared build order:
 - [ ] 7. AI layer (includes tack-ai)
 - [ ] 8. Portfolio finish
 
-### Deferred wiring in skylab-gitops (now unblocked)
+### Wave-0 wiring (in-chart, awaiting cluster-level opt-in)
 
-Terraform's `stacks/roles-anywhere` is live, so these can land next:
+All four resources now ship in their wrapper charts as values-gated opt-ins carrying `argocd.argoproj.io/sync-wave: "1"` (and `"2"` for the ExternalSecret) so Argo orders them after step-ca / step-issuer / ClusterSecretStores are healthy. The homelab cluster still needs to flip the gates on with real values:
 
-- cert-manager ClusterIssuers (`StepClusterIssuer` + ACME Let's Encrypt)
-- trust-manager Bundle distributing the step-ca root
-- external-secrets ClusterSecretStores (AWS Secrets Manager, GCP Secret Manager)
-- step-ca provisioner secrets via ExternalSecret
+- `charts/cert-manager` — `clusterIssuers.step` (needs provisioner KID), `clusterIssuers.acme` (needs email + solver)
+- `charts/trust-manager` — `bundles.stepCA`
+- `charts/external-secrets` — `clusterSecretStores.aws` (needs an out-of-band Roles Anywhere credential refresher writing to `eso-aws-credentials`), `clusterSecretStores.gcp` (needs projectID + WIF cluster location/name)
+- `charts/step-ca` — `provisionerSecret` (needs the AWS SM / GCP SM key path)
+
+Still open: ship the AWS Roles Anywhere credential refresher (`aws_signing_helper` sidecar/Deployment) as a first-class component so the AWS CSS works end to end.
 
 ### Deferred follow-ups in skylab-terraform
 

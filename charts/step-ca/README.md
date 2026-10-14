@@ -3,14 +3,27 @@
 Wave 0. Internal certificate authority. Root of trust for:
 
 - Internal TLS (via cert-manager + step-issuer)
-- IAM Roles Anywhere trust anchor (AWS, in `skylab-terraform`)
-- GCP Workload Identity Federation for hub workloads (X.509 pool)
+- IAM Roles Anywhere trust anchor (AWS, in `skylab-terraform/stacks/roles-anywhere`)
+- GCP Workload Identity Federation for hub workloads (X.509 pool, in `skylab-terraform/stacks/gcp-identity`)
 
-## Not yet included
+## Provisioner password
 
-- Provisioner passwords + CA signing key via ExternalSecret — wait for ClusterSecretStores to be wired.
-- StepClusterIssuer that cert-manager uses to request certs from this CA — follow-up once step-ca is reachable.
-- Trust bundle distribution via trust-manager — follow-up.
+Default-off ExternalSecret pulls the admin provisioner password from a `ClusterSecretStore`. Enable per cluster once an ESO store is up:
+
+```yaml
+provisionerSecret:
+  enabled: true
+  remoteRef:
+    key: skylab/step-ca/admin-provisioner-password
+```
+
+The resulting Secret is what `charts/cert-manager`'s `clusterIssuers.step.provisioner.passwordRef` points at by default. The ExternalSecret carries `argocd.argoproj.io/sync-wave: "2"` so Argo applies it after the ClusterSecretStore.
+
+## Follow-ups
+
+- CA signing key via ExternalSecret (once we commit to a signing-key rotation story).
+- Trust bundle distribution via trust-manager — shipped in `charts/trust-manager` under `bundles.stepCA`.
+- StepClusterIssuer — shipped in `charts/cert-manager` under `clusterIssuers.step`.
 
 ## Upstream
 

@@ -2,9 +2,11 @@ namespace:
   create: true
   name: step-ca
 
-# Secrets (ca password, provisioner password) land here via ExternalSecret
-# in a follow-up PR once ClusterSecretStores are wired. For now the chart's
-# auto-generated secrets are used on first install.
+# The chart's auto-generated secrets are used on first install. Once the
+# ESO ClusterSecretStores are enabled, flip `provisionerSecret.enabled`
+# so the admin provisioner password is sourced from AWS Secrets Manager
+# (or GCP Secret Manager) and `cert-manager`'s StepClusterIssuer can
+# reference it.
 step-certificates:
   inject:
     enabled: false
@@ -20,3 +22,20 @@ step-certificates:
   persistence:
     enabled: true
     size: 1Gi
+
+provisionerSecret:
+  enabled: false
+  name: step-ca-provisioner-password
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secrets-manager
+  target:
+    # cert-manager/charts/cert-manager/values.yaml defaults the step
+    # ClusterIssuer's `passwordRef` to this (name, namespace, key).
+    name: step-ca-provisioner-password
+    key: password
+  remoteRef:
+    # AWS SM / GCP SM key or path. Example: skylab/step-ca/admin-provisioner-password
+    key: ""
+    # Optional JSON property if the remote secret stores JSON.
+    property: ""

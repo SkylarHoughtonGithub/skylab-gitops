@@ -2,7 +2,7 @@ apiVersion: v2
 name: cert-manager
 description: Skylab wrapper for cert-manager. Adds the Namespace; ClusterIssuers and Bundles land in later waves once step-ca is up.
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "1.17.0"
 dependencies:
   - name: cert-manager

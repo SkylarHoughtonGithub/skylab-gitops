@@ -1,0 +1,85 @@
+suite: cert-manager ClusterIssuers
+templates:
+  - templates/clusterissuer-step.yaml
+  - templates/clusterissuer-acme.yaml
+
+tests:
+  - it: renders no issuers by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders a StepClusterIssuer when enabled
+    template: templates/clusterissuer-step.yaml
+    set:
+      clusterIssuers.step.enabled: true
+      clusterIssuers.step.provisioner.kid: "test-kid"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: StepClusterIssuer
+      - equal:
+          path: apiVersion
+          value: certmanager.step.sm/v1beta1
+      - equal:
+          path: metadata.name
+          value: skylab-step
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "1"
+      - equal:
+          path: spec.url
+          value: https://step-ca.step-ca.svc.cluster.local
+      - equal:
+          path: spec.provisioner.name
+          value: admin
+      - isNotNullOrEmpty:
+          path: spec.provisioner.passwordRef.name
+      - isNotNullOrEmpty:
+          path: spec.provisioner.passwordRef.namespace
+
+  - it: renders an ACME ClusterIssuer when enabled
+    template: templates/clusterissuer-acme.yaml
+    set:
+      clusterIssuers.acme.enabled: true
+      clusterIssuers.acme.email: ops@example.com
+      clusterIssuers.acme.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ClusterIssuer
+      - equal:
+          path: apiVersion
+          value: cert-manager.io/v1
+      - equal:
+          path: metadata.name
+          value: skylab-acme
+      - equal:
+          path: spec.acme.email
+          value: ops@example.com
+      - equal:
+          path: spec.acme.server
+          value: https://acme-v02.api.letsencrypt.org/directory
+      - equal:
+          path: spec.acme.privateKeySecretRef.name
+          value: skylab-acme-account-key
+      - equal:
+          path: spec.acme.solvers[0].http01.ingress.ingressClassName
+          value: nginx
+
+  - it: requires an ACME email
+    template: templates/clusterissuer-acme.yaml
+    set:
+      clusterIssuers.acme.enabled: true
+      clusterIssuers.acme.solvers:
+        - http01:
+            ingress:
+              ingressClassName: nginx
+    asserts:
+      - failedTemplate:
+          errorMessage: ".Values.clusterIssuers.acme.email is required when ACME is enabled"

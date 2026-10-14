@@ -1,0 +1,25 @@
+{{- if .Values.bundles.stepCA.enabled }}
+apiVersion: trust.cert-manager.io/v1alpha1
+kind: Bundle
+metadata:
+  name: {{ .Values.bundles.stepCA.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    skylab.io/component: trust-manager
+spec:
+  sources:
+    - secret:
+        name: {{ .Values.bundles.stepCA.sourceSecret.name }}
+        key: {{ .Values.bundles.stepCA.sourceSecret.key }}
+  target:
+    configMap:
+      key: {{ .Values.bundles.stepCA.target.configMapKey }}
+    {{- with .Values.bundles.stepCA.target.additionalFormats }}
+    additionalFormats:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    namespaceSelector:
+      matchLabels:
+        {{- toYaml .Values.bundles.stepCA.target.namespaceSelector | nindent 8 }}
+{{- end }}
