@@ -1,0 +1,63 @@
+namespace:
+  create: true
+  name: monitoring
+
+# Upstream chart values. Grafana ships from its own wrapper at wave 5, so
+# the bundled Grafana sub-chart is disabled here; the Prometheus datasource
+# is published via a Grafana sidecar ConfigMap from that chart.
+kube-prometheus-stack:
+  crds:
+    enabled: true
+
+  defaultRules:
+    create: true
+
+  prometheusOperator:
+    enabled: true
+    # Fleet-wide: discover ServiceMonitors/PodMonitors from any namespace,
+    # not just the release namespace. Component wrappers (cert-manager,
+    # external-secrets, etc.) ship their own ServiceMonitors next to the
+    # workloads they monitor.
+    prometheusInstances:
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+      probeSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      serviceMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelectorNilUsesHelmValues: false
+      probeSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+      retention: 15d
+      # Default to a modest PVC; cluster overrides can resize or swap
+      # storageClassName.
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 50Gi
+
+  alertmanager:
+    enabled: true
+
+  nodeExporter:
+    enabled: true
+
+  kubeStateMetrics:
+    enabled: true
+
+  kube-state-metrics:
+    # The sub-sub-chart. Pinned here so its ServiceMonitor shows up without
+    # extra selectors.
+    prometheus:
+      monitor:
+        enabled: true
+
+  # Disabled; the skylab grafana wrapper owns Grafana.
+  grafana:
+    enabled: false
