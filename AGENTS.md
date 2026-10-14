@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Everything Argo CD syncs: per-component wrapper charts, a chart that renders Applications in sync waves, per-cluster config files and workload definitions. This is the delivery hub of the Skylab platform — see `plan.md` for the full rework plan and current cross-repo status.
 
-**Current state (2026-10-14):** bootstrap scaffolding, `skylab-apps` renderer, CI pipeline (ct lint, helm-unittest, kubeconform), and wrapper charts through wave 5 (skipping wave 2) — `argo-cd` (-2), `cert-manager` + `external-secrets` (-1), `step-ca` + `step-issuer` + `trust-manager` + `kyverno` (0), `crossplane` + `crossplane-providers` (1), `kubevela` (3), `gitea` + `act-runner` (4), `kube-prometheus-stack` (5). Wave-0 wiring (StepClusterIssuer + ACME + trust-manager Bundle + ESO ClusterSecretStores + step-ca provisioner ExternalSecret) is in the charts as values-gated resources; the homelab cluster has the trust-manager Bundle flipped on (via `charts/trust-manager/values-homelab.yaml`), the rest remain off pending real inputs (KID, ACME email + solver, AWS SM path). act-runner needs a manually-created `gitea-runner-token` Secret in the `gitea` namespace to go healthy. Wave 2 (`skylab-crossplane` Configuration pin) deferred until the `skylab-crossplane` repo publishes an OCI package. `kubevela-defs` deferred to co-land with the first Backstage golden-path template. Next: remaining wave 5 wrappers (Loki, Tempo, Alloy, Grafana, SLO rules).
+**Current state (2026-10-14):** bootstrap scaffolding, `skylab-apps` renderer, CI pipeline (ct lint, helm-unittest, kubeconform), local k3d dev workflow (`Taskfile.yml` + `dev/`), and wrapper charts through wave 5 (skipping wave 2) — `argo-cd` (-2), `cert-manager` + `external-secrets` (-1), `step-ca` + `step-issuer` + `trust-manager` + `kyverno` (0), `crossplane` + `crossplane-providers` (1), `kubevela` (3), `gitea` + `act-runner` (4), `kube-prometheus-stack` (5). Wave-0 wiring (StepClusterIssuer + ACME + trust-manager Bundle + ESO ClusterSecretStores + step-ca provisioner ExternalSecret) is in the charts as values-gated resources; the homelab cluster has the trust-manager Bundle flipped on (via `charts/trust-manager/values-homelab.yaml`), the rest remain off pending real inputs (KID, ACME email + solver, AWS SM path). act-runner needs a manually-created `gitea-runner-token` Secret in the `gitea` namespace to go healthy. Wave 2 (`skylab-crossplane` Configuration pin) deferred until the `skylab-crossplane` repo publishes an OCI package. `kubevela-defs` deferred to co-land with the first Backstage golden-path template. Next: remaining wave 5 wrappers (Loki, Tempo, Alloy, Grafana, SLO rules); production/homelab deployment deferred until the local dev loop is proven.
 
 ## Layer
 
@@ -17,6 +17,7 @@ Everything Argo CD syncs: per-component wrapper charts, a chart that renders App
 - `main` is protected: direct pushes are rejected. Branch for every change and open a PR (self-merge, 0 approvals required).
 - No `Co-Authored-By` trailers in commit messages.
 - Pin `targetRevision` everywhere; no `HEAD`.
+- Local dev loop: `task dev:up` builds a k3d cluster, installs Argo CD, applies the root ApplicationSet, and reconciles the components enabled in `clusters/skylab-dev.yaml`. See `dev/README.md`.
 
 ## Target repo shape
 
@@ -26,8 +27,10 @@ clusters/        # one file per cluster: labels, enabled components, overrides
 charts/
   skylab-apps/   # renders Applications, AppProjects, sync waves
   <component>/   # one wrapper chart per component (cert-manager, kubevela, …)
+dev/             # local k3d cluster: config, Argo CD cluster Secret, README
 workloads/       # platform-owned KubeVela Applications
 docs/adr/
+Taskfile.yml     # dev loop + lint entry points
 ```
 
 ## Architecture decisions

@@ -1,0 +1,122 @@
+# Local dev workflow for Skylab GitOps.
+#
+# Prereqs on the host:
+#   - docker (or compatible container runtime)
+#   - k3d        (https://k3d.io)
+#   - kubectl
+#   - helm
+#   - helm-unittest plugin  (helm plugin install https://github.com/helm-unittest/helm-unittest)
+#   - task       (https://taskfile.dev)
+#
+# Entry points:
+#   task dev:up        # create cluster + install Argo CD + apply root ApplicationSet
+#   task dev:down      # delete the k3d cluster
+#   task dev:ui        # port-forward argocd-server to localhost:8080
+#   task dev:password  # print the admin bootstrap password
+#   task dev:status    # cluster + Applications summary
+#   task lint          # helm-unittest across every chart
+
+version: '3'
+
+vars:
+  CLUSTER_NAME: skylab-dev
+  ARGO_CD_CHART_VERSION: 7.8.0
+  ARGO_CD_NAMESPACE: argocd
+  KUBECONTEXT: k3d-{{.CLUSTER_NAME}}
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list
+
+  dev:up:
+    desc: Create k3d cluster, install Argo CD, apply root ApplicationSet
+    cmds:
+      - task: dev:cluster
+      - task: dev:argocd
+      - task: dev:register
+      - task: dev:root
+      - 'echo'
+      - 'echo "Dev cluster ready. Next:"'
+      - 'echo "  task dev:ui        -- port-forward argocd-server to localhost:8080"'
+      - 'echo "  task dev:password  -- print the admin bootstrap password"'
+      - 'echo "  task dev:status    -- list Applications"'
+
+  dev:cluster:
+    desc: Create the k3d cluster (no-op if it already exists)
+    status:
+      - k3d cluster list {{.CLUSTER_NAME}} >/dev/null 2>&1
+    cmds:
+      - k3d cluster create --config dev/k3d-config.yaml
+      - kubectl --context {{.KUBECONTEXT}} wait --for=condition=Ready node --all --timeout=120s
+
+  dev:argocd:
+    desc: Install (or upgrade) Argo CD via helm using bootstrap/argocd-values.yaml
+    cmds:
+      - kubectl --context {{.KUBECONTEXT}} create namespace {{.ARGO_CD_NAMESPACE}} --dry-run=client -o yaml | kubectl --context {{.KUBECONTEXT}} apply -f -
+      - helm repo add argo https://argoproj.github.io/argo-helm --force-update
+      - helm repo update argo
+      - |
+        helm --kube-context {{.KUBECONTEXT}} upgrade --install argocd argo/argo-cd \
+          --namespace {{.ARGO_CD_NAMESPACE}} \
+          --version {{.ARGO_CD_CHART_VERSION}} \
+          -f bootstrap/argocd-values.yaml \
+          --wait --timeout 10m
+
+  dev:register:
+    desc: Register the dev cluster as an Argo CD cluster Secret with Skylab labels
+    cmds:
+      - kubectl --context {{.KUBECONTEXT}} apply -f dev/argocd-cluster-secret.yaml
+
+  dev:root:
+    desc: Apply the root ApplicationSet
+    cmds:
+      - kubectl --context {{.KUBECONTEXT}} apply -f bootstrap/root-applicationset.yaml
+
+  dev:ui:
+    desc: Port-forward argocd-server to https://localhost:8080
+    cmds:
+      - kubectl --context {{.KUBECONTEXT}} -n {{.ARGO_CD_NAMESPACE}} port-forward svc/argocd-server 8080:443
+
+  dev:password:
+    desc: Print the Argo CD admin bootstrap password
+    cmds:
+      - kubectl --context {{.KUBECONTEXT}} -n {{.ARGO_CD_NAMESPACE}} get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+      - echo
+
+  dev:status:
+    desc: Show cluster + Applications state
+    cmds:
+      - k3d cluster list {{.CLUSTER_NAME}}
+      - kubectl --context {{.KUBECONTEXT}} -n {{.ARGO_CD_NAMESPACE}} get applicationsets,applications
+
+  dev:down:
+    desc: Delete the k3d cluster (destructive)
+    prompt: Delete the {{.CLUSTER_NAME}} k3d cluster? All in-cluster state is lost.
+    cmds:
+      - k3d cluster delete {{.CLUSTER_NAME}}
+
+  lint:
+    desc: Run helm-unittest across every chart that has a tests/ dir
+    cmds:
+      - |
+        set -e
+        for d in charts/*/; do
+          [ -f "$d/Chart.yaml" ] || continue
+          [ -d "$d/tests" ] || continue
+          echo "===> $d"
+          ( cd "$d" && helm dependency update >/dev/null 2>&1 || true; helm unittest . )
+        done
+
+  template:
+    desc: 'Render a single wrapper chart (usage: task template -- cert-manager)'
+    cmds:
+      - |
+        if [ -z "{{.CLI_ARGS}}" ]; then
+          echo "usage: task template -- <chart-name>"
+          exit 2
+        fi
+        cd charts/{{.CLI_ARGS}}
+        helm dependency update >/dev/null
+        helm template .
