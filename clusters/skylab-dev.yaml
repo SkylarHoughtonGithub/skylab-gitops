@@ -15,8 +15,17 @@ components:
   kubevela:
     enabled: true
 
+  # Trust layer. step-ca's auto-generated admin provisioner is enough for
+  # dev; provisionerSecret stays off (that path needs AWS SM / GCP SM).
+  # trust-manager Bundle + StepClusterIssuer flip-on land in a follow-up
+  # once the KID can be read from the running step-ca.
+  step-ca:
+    enabled: true
+  step-issuer:
+    enabled: true
+
   # Default-off in dev until their external prereqs are stubbed:
-  #   step-ca / step-issuer / trust-manager — need a dev provisioner KID
+  #   trust-manager                        — needs step-ca healthy (follow-up)
   #   crossplane / crossplane-providers    — need cloud credentials
   #   gitea / act-runner                   — act-runner needs a token Secret
   #   kube-prometheus-stack                — fine on k3d but heavy; opt in
