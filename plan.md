@@ -47,7 +47,7 @@ Humans and agents only ever write to Git; Argo CD is the single path into the cl
 
 Progress through the shared build order:
 
-- [x] 1. **skylab-gitops** — bootstrap, skylab-apps renderer, CI pipeline, waves -2 → 1 landed; wave-0 wiring resources shipped as values-gated opt-ins (StepClusterIssuer, ACME ClusterIssuer, trust-manager Bundle, ESO ClusterSecretStores for AWS SM + GCP SM, step-ca provisioner ExternalSecret). Next: homelab flips the gates on with real ARNs/KIDs, then wave 2 pin or wave 3 KubeVela.
+- [x] 1. **skylab-gitops** — bootstrap, skylab-apps renderer, CI pipeline, waves -2 → 1 landed; wave-0 wiring resources shipped as values-gated opt-ins (StepClusterIssuer, ACME ClusterIssuer, trust-manager Bundle, ESO ClusterSecretStores for AWS SM + GCP SM, step-ca provisioner ExternalSecret); wave 3 `kubevela` wrapper landed (operator only). Wave 2 (`skylab-crossplane` Configuration pin) and `kubevela-defs` both intentionally deferred — see sections below. Next: wave 4 Gitea, or come back for wave 2 once skylab-crossplane ships.
 - [x] 2. **skylab-terraform** — substantively complete. Seven stacks (bootstrap, identity, storage, roles-anywhere, crossplane, qdevice, gcp-identity) and five modules (aws-github-oidc, aws-object-storage, aws-roles-anywhere, aws-ecs-service, gcp-workload-identity) with fmt/validate/tflint/trivy CI. Modules consistently cloud-prefixed. Follow-ups below.
 - [ ] 3. **skylab-backstage** — not started.
 - [ ] 4. **skylab-crossplane** — not started. The gitops wave 2 Application will pin an OCI package built from this repo.
@@ -66,6 +66,11 @@ All four resources now ship in their wrapper charts as values-gated opt-ins carr
 - `charts/step-ca` — `provisionerSecret` (needs the AWS SM / GCP SM key path)
 
 Still open: ship the AWS Roles Anywhere credential refresher (`aws_signing_helper` sidecar/Deployment) as a first-class component so the AWS CSS works end to end.
+
+### Intentionally deferred
+
+- **Wave 2 `charts/skylab-crossplane`.** The Configuration CR pins an OCI package published by the `skylab-crossplane` repo (build step #4), which hasn't started. Rather than scaffold a placeholder with `enabled: false`, we skipped the wave; land it when that repo publishes a real `v0.1.0`.
+- **`charts/kubevela-defs`.** The ComponentDefinition / TraitDefinition vocabulary (`go-service`, `ai-agent`, `postgres`, `bucket`, `observability`, `route`, `canary`, `autoscale`, `secrets`, `model-access`) is best driven by a concrete consumer. Co-land with the first Backstage golden-path template in `skylab-backstage` so the exact set reflects a real workload. `postgres` and `bucket` additionally depend on XRDs from `skylab-crossplane`.
 
 ### Deferred follow-ups in skylab-terraform
 

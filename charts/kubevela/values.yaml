@@ -1,0 +1,21 @@
+namespace:
+  create: true
+  name: vela-system
+
+# Upstream vela-core chart values live under the dependency alias.
+vela-core:
+  # Keep the control plane lean on the hub; spoke profiles tune this later.
+  replicaCount: 1
+
+  # Enable Prometheus ServiceMonitor in wave 5 once kube-prometheus-stack
+  # is up. Keeping it off here avoids a missing-CRD error at install.
+  serviceMonitor:
+    enabled: false
+
+  admissionWebhooks:
+    enabled: true
+    certificate:
+      # The vela-core chart generates its own self-signed cert for the
+      # webhook. Swap to a cert-manager Certificate (via StepClusterIssuer)
+      # once wave-0 wiring is turned on at the cluster level.
+      useCertManager: false
