@@ -14,6 +14,8 @@ components:
     enabled: true
   trust-manager:
     enabled: true
+    extraValueFiles:
+      - values-homelab.yaml
   kyverno:
     enabled: true
   crossplane:
