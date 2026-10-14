@@ -2,7 +2,7 @@ apiVersion: v2
 name: kube-prometheus-stack
 description: Skylab wrapper for kube-prometheus-stack. Delivers the Prometheus Operator, Prometheus, Alertmanager, node-exporter, and kube-state-metrics. Grafana ships from its own wrapper at wave 5.
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "0.94.1"
 dependencies:
   - name: kube-prometheus-stack

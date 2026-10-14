@@ -2,7 +2,7 @@ apiVersion: v2
 name: step-issuer
 description: Skylab wrapper for step-issuer. Lets cert-manager request certificates from step-ca.
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "0.11.0"
 dependencies:
   - name: step-issuer
