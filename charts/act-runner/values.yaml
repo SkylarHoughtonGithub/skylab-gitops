@@ -9,9 +9,11 @@ namespace:
 # create the Secret manually:
 #   kubectl -n gitea create secret generic gitea-runner-token \
 #     --from-literal=token=<token from Gitea admin UI>
-# The Pod will CrashLoop until this Secret exists; that's a known healthy-
-# soon state after a fresh install, not a bug.
-act_runner:
+# The runner Pod will CrashLoop until this Secret exists; that's a known
+# healthy-soon state after a fresh install, not a bug.
+actions:
+  enabled: true
+
   giteaRootURL: http://gitea-http.gitea.svc.cluster.local:3000
 
   # Reference the Secret above. The upstream chart mounts it at
@@ -19,14 +21,7 @@ act_runner:
   existingSecret: gitea-runner-token
   existingSecretKey: token
 
-  persistence:
-    enabled: true
-    size: 10Gi
-
-  # Default labels advertised to Gitea. Matches the labels the Backstage
-  # Go-service template's workflow jobs will select on.
-  config:
-    runner:
-      labels:
-        - ubuntu-latest:docker://node:20-bookworm
-        - self-hosted:host
+  statefulset:
+    replicas: 1
+    persistence:
+      size: 10Gi

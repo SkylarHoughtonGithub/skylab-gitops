@@ -10,9 +10,9 @@ namespace:
 #  - Admin credentials via ExternalSecret (ESO ClusterSecretStore)
 #  - ServiceMonitor (wave 5, kube-prometheus-stack)
 gitea:
-  # Bundled Postgres on a PVC. Lightweight for a homelab hub; swap to
-  # Crossplane-managed Cloud SQL once skylab-crossplane ships the postgres
-  # XR.
+  # Lightweight homelab shape: bundled single-node Postgres on a PVC and
+  # a single Valkey replica. Swap to Crossplane-managed Cloud SQL / RDS
+  # once skylab-crossplane ships the postgres XR.
   postgresql-ha:
     enabled: false
   postgresql:
@@ -21,10 +21,11 @@ gitea:
       persistence:
         enabled: true
         size: 10Gi
-  redis-cluster:
+  valkey-cluster:
     enabled: false
-  redis:
+  valkey:
     enabled: true
+    architecture: standalone
 
   persistence:
     enabled: true

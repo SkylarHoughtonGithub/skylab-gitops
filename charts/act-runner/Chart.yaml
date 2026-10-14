@@ -1,11 +1,11 @@
 apiVersion: v2
 name: act-runner
-description: Skylab wrapper for Gitea's act_runner. Runs Gitea Actions workflows for repos hosted on the hub Gitea.
+description: Skylab wrapper for Gitea Actions runner. Runs Gitea Actions workflows for repos hosted on the hub Gitea.
 type: application
 version: 0.1.0
-appVersion: "0.2.11"
+appVersion: "0.261.3"
 dependencies:
-  - name: act_runner
+  - name: actions
     repository: https://dl.gitea.com/charts/
     # Pin deliberately; bump via a PR after reviewing release notes.
-    version: 0.1.0
+    version: 0.1.2
