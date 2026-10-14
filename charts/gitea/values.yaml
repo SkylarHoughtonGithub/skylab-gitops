@@ -34,7 +34,11 @@ gitea:
   gitea:
     config:
       server:
-        # Set to the public URL once Ingress + step-ca cert are wired.
+        # Set ROOT_URL to the public URL once Ingress + step-ca cert are
+        # wired. HTTP_PORT must be set explicitly — the http Service
+        # template reads it to populate targetPort, and the upstream
+        # chart's values default is empty.
+        HTTP_PORT: 3000
         ROOT_URL: http://gitea.gitea.svc.cluster.local:3000/
         DOMAIN: gitea.gitea.svc.cluster.local
       service:
