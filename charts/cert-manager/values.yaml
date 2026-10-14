@@ -18,6 +18,27 @@ cert-manager:
 clusterIssuers:
   step:
     enabled: false
+    # Alternative to a hard-coded kid: a PostSync Job that waits for
+    # step-ca's ConfigMap + root Secret, extracts the KID from ca.json,
+    # and applies the StepClusterIssuer. Keeps the KID (dynamic, per-
+    # cluster) out of Git without pre-provisioning a deterministic
+    # provisioner keypair. The resulting ClusterIssuer carries
+    # argocd.argoproj.io/compare-options: IgnoreExtraneous so Argo
+    # won't try to reconcile the Job-managed object as drift.
+    bootstrap:
+      enabled: false
+      waitTimeoutSeconds: 600
+      stepCA:
+        namespace: step-ca
+        # ca.json (with authority.provisioners[].key.kid) lives here.
+        configMap: step-ca-step-certificates-config
+        # root_ca.crt lives in a sibling ConfigMap populated by the
+        # step-certificates init Job.
+        rootConfigMap: step-ca-step-certificates-certs
+        rootConfigMapKey: root_ca.crt
+      image:
+        repository: alpine/k8s
+        tag: "1.33.13"
     name: skylab-step
     # Internal step-ca endpoint. The step-certificates chart defaults to
     # port 9000 on an in-cluster Service in the step-ca namespace.

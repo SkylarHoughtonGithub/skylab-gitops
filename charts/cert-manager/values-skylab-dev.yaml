@@ -1,0 +1,12 @@
+clusterIssuers:
+  step:
+    bootstrap:
+      enabled: true
+    # In dev we use step-ca's auto-generated admin provisioner (no
+    # ExternalSecret), so passwordRef points at the step-certificates
+    # chart's own Secret.
+    provisioner:
+      passwordRef:
+        name: step-ca-step-certificates-provisioner-password
+        namespace: step-ca
+        key: password
