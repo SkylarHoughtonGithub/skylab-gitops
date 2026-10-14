@@ -1,0 +1,35 @@
+# k3d cluster config for local Skylab dev.
+#
+# Usage:
+#   task dev:up      # create cluster, install Argo CD, apply root ApplicationSet
+#   task dev:down    # delete cluster
+#
+# See dev/README.md for the full workflow.
+
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: skylab-dev
+servers: 1
+agents: 2
+image: rancher/k3s:v1.31.4-k3s1
+
+options:
+  k3s:
+    extraArgs:
+      # Traefik ships with k3s; we disable it so our own ingress (gateway-api
+      # or ingress-nginx, chosen later) can own the loadbalancer path. No
+      # ingress is wired in dev yet — port-forward argocd-server for the UI.
+      - arg: --disable=traefik
+        nodeFilters: ["server:*"]
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
+
+# Expose ports from the k3d loadbalancer. Reserved for a future ingress
+# wave; currently nothing listens on them.
+ports:
+  - port: 8080:80
+    nodeFilters: ["loadbalancer"]
+  - port: 8443:443
+    nodeFilters: ["loadbalancer"]

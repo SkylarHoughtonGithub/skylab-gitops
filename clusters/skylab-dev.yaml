@@ -1,0 +1,23 @@
+# Per-cluster config for the local k3d dev cluster.
+# Overlaid on top of charts/skylab-apps/values.yaml and values-dev.yaml.
+#
+# Minimal set enabled for first bring-up: the components that come up
+# cleanly without external inputs (no cloud identity, no DNS). Flip the
+# rest on incrementally as their prereqs land.
+
+components:
+  cert-manager:
+    enabled: true
+  external-secrets:
+    enabled: true
+  kyverno:
+    enabled: true
+  kubevela:
+    enabled: true
+
+  # Default-off in dev until their external prereqs are stubbed:
+  #   step-ca / step-issuer / trust-manager — need a dev provisioner KID
+  #   crossplane / crossplane-providers    — need cloud credentials
+  #   gitea / act-runner                   — act-runner needs a token Secret
+  #   kube-prometheus-stack                — fine on k3d but heavy; opt in
+  #   argo-cd (self-manage)                — enable after other components settle
