@@ -37,11 +37,11 @@ tasks:
       - task: dev:argocd
       - task: dev:register
       - task: dev:root
-      - echo
-      - echo "Dev cluster ready. Next:"
-      - echo "  task dev:ui        # port-forward argocd-server to localhost:8080"
-      - echo "  task dev:password  # print the admin bootstrap password"
-      - echo "  task dev:status    # list Applications"
+      - 'echo'
+      - 'echo "Dev cluster ready. Next:"'
+      - 'echo "  task dev:ui        -- port-forward argocd-server to localhost:8080"'
+      - 'echo "  task dev:password  -- print the admin bootstrap password"'
+      - 'echo "  task dev:status    -- list Applications"'
 
   dev:cluster:
     desc: Create the k3d cluster (no-op if it already exists)
