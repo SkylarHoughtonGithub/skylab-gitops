@@ -32,9 +32,11 @@ components:
       - values-skylab-dev.yaml
 
   # Observability. kube-prometheus-stack scrapes metrics; Alloy ships
-  # pod logs to Loki; Grafana reads from both via sidecar-provisioned
-  # datasources. Resource-hungry; dev had evictions when all four and
-  # the trust layer ran together — watch pod states.
+  # pod logs to Loki; Tempo stores traces (Alloy OTLP forwarding ships
+  # in a follow-up once workloads emit spans); Sloth generates burn-rate
+  # PrometheusRules from PrometheusServiceLevel CRs (none yet). Grafana
+  # discovers Prometheus/Loki/Tempo datasources via its provisioning
+  # sidecar.
   kube-prometheus-stack:
     enabled: true
   grafana:
@@ -42,6 +44,10 @@ components:
   loki:
     enabled: true
   alloy:
+    enabled: true
+  tempo:
+    enabled: true
+  sloth:
     enabled: true
 
   # Default-off in dev until their external prereqs are stubbed:

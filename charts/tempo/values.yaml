@@ -1,0 +1,28 @@
+# kube-prometheus-stack owns the monitoring namespace; this wrapper
+# only renders the Namespace resource when run standalone.
+namespace:
+  create: false
+  name: monitoring
+
+# Grafana datasource ConfigMap, picked up by Grafana's sidecar via
+# label `grafana_datasource=1`. Points at Tempo's query frontend.
+datasource:
+  enabled: true
+  url: http://tempo.monitoring.svc.cluster.local:3100
+
+tempo:
+  # The grafana/tempo chart is the SingleBinary variant; the scalable
+  # chart (tempo-distributed) is a separate chart and ships in a
+  # follow-up when prod wiring begins.
+  persistence:
+    enabled: true
+    size: 10Gi
+    accessModes: ["ReadWriteOnce"]
+
+  tempo:
+    # OTLP receiver on gRPC 4317 + HTTP 4318 is the default; Alloy
+    # forwards traces here once a workload emits them.
+    retention: 72h  # dev-tight; prod overlays raise this
+
+  serviceMonitor:
+    enabled: true

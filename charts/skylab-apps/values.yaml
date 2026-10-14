@@ -129,3 +129,13 @@ components:
     wave: "5"
     namespace: monitoring
     project: platform
+  tempo:
+    enabled: false
+    wave: "5"
+    namespace: monitoring
+    project: platform
+  sloth:
+    enabled: false
+    wave: "5"
+    namespace: monitoring
+    project: platform

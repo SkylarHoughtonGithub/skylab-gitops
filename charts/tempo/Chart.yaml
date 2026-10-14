@@ -1,0 +1,11 @@
+apiVersion: v2
+name: tempo
+description: Skylab wrapper for Tempo. SingleBinary with filesystem storage in dev; production overlays switch to the scalable chart (tempo-distributed) + S3 once the terraform-outputs contract publishes bucket + role ARNs.
+type: application
+version: 0.1.0
+appVersion: "2.9.0"
+dependencies:
+  - name: tempo
+    repository: https://grafana.github.io/helm-charts
+    # Pin deliberately; bump via a PR after reviewing release notes.
+    version: 1.24.4
