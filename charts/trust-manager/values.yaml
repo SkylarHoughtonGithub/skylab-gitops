@@ -10,15 +10,16 @@ trust-manager:
 
 # Bundles distributed to tenant namespaces. Each is default-off; enable
 # per cluster. Sync-wave 1 so Argo waits for step-ca to publish its root
-# Secret before trust-manager tries to source it.
+# before trust-manager tries to source it.
 bundles:
   stepCA:
     enabled: false
     name: skylab-ca
-    # Source: step-ca's auto-generated Secret in the step-ca namespace.
-    # The step-certificates chart publishes the root under this key.
-    sourceSecret:
-      name: step-ca-certs
+    # Source: step-ca's auto-generated ConfigMap in the step-ca namespace.
+    # The step-certificates chart's init Job populates this with the
+    # files under /home/step/certs — root_ca.crt is the hub root.
+    sourceConfigMap:
+      name: step-ca-step-certificates-certs
       key: root_ca.crt
     target:
       # ConfigMap of this name lands in every namespace matched below.

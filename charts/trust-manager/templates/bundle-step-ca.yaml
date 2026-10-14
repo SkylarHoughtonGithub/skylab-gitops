@@ -9,9 +9,9 @@ metadata:
     skylab.io/component: trust-manager
 spec:
   sources:
-    - secret:
-        name: {{ .Values.bundles.stepCA.sourceSecret.name }}
-        key: {{ .Values.bundles.stepCA.sourceSecret.key }}
+    - configMap:
+        name: {{ .Values.bundles.stepCA.sourceConfigMap.name }}
+        key: {{ .Values.bundles.stepCA.sourceConfigMap.key }}
   target:
     configMap:
       key: {{ .Values.bundles.stepCA.target.configMapKey }}

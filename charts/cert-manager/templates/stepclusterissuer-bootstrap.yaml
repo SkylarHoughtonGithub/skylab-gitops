@@ -1,0 +1,223 @@
+{{- $b := .Values.clusterIssuers.step.bootstrap -}}
+{{- if $b.enabled }}
+# Bootstrap flow for StepClusterIssuer when the provisioner KID is only
+# known at runtime (the step-ca chart auto-generates it).
+#
+# A PostSync hook on the cert-manager Application waits for the step-ca
+# ConfigMap and root Secret to exist, extracts the KID from ca.json,
+# then applies a StepClusterIssuer with the discovered values. PostSync
+# hooks don't gate the parent Application's health, so cert-manager
+# (wave -1) can reach Healthy without waiting on step-ca (wave 0) and
+# the usual wave ordering still holds.
+#
+# The resulting StepClusterIssuer is marked IgnoreExtraneous so Argo
+# won't try to prune it as drift from the (empty) template render.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-manager-step-bootstrap
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    skylab.io/component: cert-manager
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cert-manager-step-bootstrap-reader
+  namespace: {{ $b.stepCA.namespace }}
+  labels:
+    skylab.io/component: cert-manager
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-manager-step-bootstrap-reader
+  namespace: {{ $b.stepCA.namespace }}
+  labels:
+    skylab.io/component: cert-manager
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cert-manager-step-bootstrap-reader
+subjects:
+  - kind: ServiceAccount
+    name: cert-manager-step-bootstrap
+    namespace: {{ .Values.namespace.name }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cert-manager-step-bootstrap-issuer
+  labels:
+    skylab.io/component: cert-manager
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+rules:
+  - apiGroups: ["certmanager.step.sm"]
+    resources: ["stepclusterissuers"]
+    verbs: ["get", "create", "update", "patch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cert-manager-step-bootstrap-issuer
+  labels:
+    skylab.io/component: cert-manager
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cert-manager-step-bootstrap-issuer
+subjects:
+  - kind: ServiceAccount
+    name: cert-manager-step-bootstrap
+    namespace: {{ .Values.namespace.name }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cert-manager-step-bootstrap
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    skylab.io/component: cert-manager
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        skylab.io/component: cert-manager
+    spec:
+      serviceAccountName: cert-manager-step-bootstrap
+      restartPolicy: OnFailure
+      containers:
+        - name: bootstrap
+          image: "{{ $b.image.repository }}:{{ $b.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: STEP_CA_NAMESPACE
+              value: {{ $b.stepCA.namespace | quote }}
+            - name: STEP_CA_CONFIGMAP
+              value: {{ $b.stepCA.configMap | quote }}
+            - name: ROOT_CONFIGMAP
+              value: {{ $b.stepCA.rootConfigMap | quote }}
+            - name: ROOT_CONFIGMAP_KEY
+              value: {{ $b.stepCA.rootConfigMapKey | quote }}
+            - name: WAIT_TIMEOUT_SECONDS
+              value: {{ $b.waitTimeoutSeconds | quote }}
+            - name: ISSUER_NAME
+              value: {{ .Values.clusterIssuers.step.name | quote }}
+            - name: STEP_CA_URL
+              value: {{ .Values.clusterIssuers.step.url | quote }}
+            - name: PROVISIONER_NAME
+              value: {{ .Values.clusterIssuers.step.provisioner.name | quote }}
+            - name: PASSWORD_SECRET_NAME
+              value: {{ .Values.clusterIssuers.step.provisioner.passwordRef.name | quote }}
+            - name: PASSWORD_SECRET_NAMESPACE
+              value: {{ .Values.clusterIssuers.step.provisioner.passwordRef.namespace | quote }}
+            - name: PASSWORD_SECRET_KEY
+              value: {{ .Values.clusterIssuers.step.provisioner.passwordRef.key | quote }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+
+              wait_for() {
+                local what="$1"; shift
+                local start=$SECONDS
+                until "$@" >/dev/null 2>&1; do
+                  if [ $((SECONDS - start)) -ge "${WAIT_TIMEOUT_SECONDS}" ]; then
+                    echo "ERROR: timeout waiting for ${what}" >&2
+                    exit 1
+                  fi
+                  sleep 5
+                done
+                echo "ready: ${what}"
+              }
+
+              wait_for "StepClusterIssuer CRD" \
+                kubectl get crd stepclusterissuers.certmanager.step.sm
+              # The step-certificates init Job populates both ConfigMaps
+              # after the Pod starts; existence alone isn't enough — wait
+              # for the data keys to be non-empty too.
+              wait_for "step-ca config ca.json" bash -c "
+                kubectl -n '${STEP_CA_NAMESPACE}' get configmap '${STEP_CA_CONFIGMAP}' -o json \
+                | jq -e '.data[\"ca.json\"] // empty | length > 0'
+              "
+              wait_for "step-ca root ${ROOT_CONFIGMAP_KEY}" bash -c "
+                kubectl -n '${STEP_CA_NAMESPACE}' get configmap '${ROOT_CONFIGMAP}' -o json \
+                | jq -e --arg k '${ROOT_CONFIGMAP_KEY}' '.data[\$k] // empty | length > 0'
+              "
+
+              ca_json=$(kubectl -n "${STEP_CA_NAMESPACE}" \
+                get configmap "${STEP_CA_CONFIGMAP}" -o json \
+                | jq -r '.data["ca.json"]')
+
+              kid=$(printf '%s' "$ca_json" | jq -r \
+                --arg name "${PROVISIONER_NAME}" \
+                '.authority.provisioners[] | select(.name == $name) | .key.kid // empty')
+
+              if [ -z "$kid" ]; then
+                echo "ERROR: no KID found for provisioner '${PROVISIONER_NAME}' in ca.json" >&2
+                exit 1
+              fi
+              echo "discovered KID: ${kid}"
+
+              # ConfigMap data is plain text; StepClusterIssuer.spec.caBundle
+              # expects base64-encoded PEM.
+              ca_bundle=$(kubectl -n "${STEP_CA_NAMESPACE}" \
+                get configmap "${ROOT_CONFIGMAP}" -o json \
+                | jq -r --arg k "${ROOT_CONFIGMAP_KEY}" '.data[$k] // empty' \
+                | base64 -w0)
+
+              if [ -z "$ca_bundle" ]; then
+                echo "ERROR: key '${ROOT_CONFIGMAP_KEY}' not found in ConfigMap '${ROOT_CONFIGMAP}'" >&2
+                exit 1
+              fi
+
+              cat <<MANIFEST | kubectl apply -f -
+              apiVersion: certmanager.step.sm/v1beta1
+              kind: StepClusterIssuer
+              metadata:
+                name: ${ISSUER_NAME}
+                annotations:
+                  argocd.argoproj.io/compare-options: IgnoreExtraneous
+                labels:
+                  skylab.io/component: cert-manager
+                  app.kubernetes.io/managed-by: cert-manager-step-bootstrap
+              spec:
+                url: ${STEP_CA_URL}
+                caBundle: ${ca_bundle}
+                provisioner:
+                  name: ${PROVISIONER_NAME}
+                  kid: ${kid}
+                  passwordRef:
+                    name: ${PASSWORD_SECRET_NAME}
+                    namespace: ${PASSWORD_SECRET_NAMESPACE}
+                    key: ${PASSWORD_SECRET_KEY}
+              MANIFEST
+              echo "StepClusterIssuer/${ISSUER_NAME} applied"
+{{- end }}

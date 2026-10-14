@@ -26,10 +26,10 @@ tests:
           path: metadata.annotations["argocd.argoproj.io/sync-wave"]
           value: "1"
       - equal:
-          path: spec.sources[0].secret.name
-          value: step-ca-certs
+          path: spec.sources[0].configMap.name
+          value: step-ca-step-certificates-certs
       - equal:
-          path: spec.sources[0].secret.key
+          path: spec.sources[0].configMap.key
           value: root_ca.crt
       - equal:
           path: spec.target.configMap.key
