@@ -109,3 +109,8 @@ components:
     wave: "4"
     namespace: gitea
     project: platform
+  kube-prometheus-stack:
+    enabled: false
+    wave: "5"
+    namespace: monitoring
+    project: platform

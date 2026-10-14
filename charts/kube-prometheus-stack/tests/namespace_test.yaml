@@ -1,0 +1,35 @@
+suite: kube-prometheus-stack Namespace
+templates:
+  - templates/namespace.yaml
+
+tests:
+  - it: renders the Namespace by default
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Namespace
+      - equal:
+          path: metadata.name
+          value: monitoring
+      - equal:
+          path: metadata.labels["skylab.io/component"]
+          value: kube-prometheus-stack
+      - equal:
+          path: metadata.labels["skylab.io/wave"]
+          value: "5"
+
+  - it: skips the Namespace when namespace.create is false
+    set:
+      namespace.create: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: respects a renamed Namespace
+    set:
+      namespace.name: observability
+    asserts:
+      - equal:
+          path: metadata.name
+          value: observability
