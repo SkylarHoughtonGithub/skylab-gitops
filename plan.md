@@ -43,11 +43,13 @@ Humans and agents only ever write to Git; Argo CD is the single path into the cl
 7. **AI layer**: model gateway, HolmesGPT, tack-ai remediation, kagent.
 8. **Portfolio finish**: profile README, pins, ADRs.
 
-## Status (as of 2026-10-13)
+## Status (as of 2026-10-14)
+
+> **Keep this current.** Every substantive change (new wrapper, flipped-on component, infra fix) updates this section and the matching `## Current state` line in `AGENTS.md` as part of the same PR. If the entry you need isn't here, add it rather than leaving the record stale.
 
 Progress through the shared build order:
 
-- [x] 1. **skylab-gitops** — bootstrap, skylab-apps renderer, CI pipeline, waves -2 → 1 landed; wave-0 wiring resources shipped as values-gated opt-ins (StepClusterIssuer, ACME ClusterIssuer, trust-manager Bundle, ESO ClusterSecretStores for AWS SM + GCP SM, step-ca provisioner ExternalSecret); wave 3 `kubevela` wrapper landed (operator only); wave 4 `gitea` + `act-runner` wrappers landed (bundled Postgres on PVC; runner needs a manually-created `gitea-runner-token` Secret to go healthy). Wave 2 (`skylab-crossplane` Configuration pin) and `kubevela-defs` both intentionally deferred — see sections below. Next: wave 5 observability.
+- [x] 1. **skylab-gitops** — bootstrap, `skylab-apps` renderer, CI pipeline, local **k3d dev loop** (`Taskfile.yml` + `dev/`), **Renovate** for OCI/image/action bumps, and waves -2 → 5 landed (skipping wave 2). Wave-0 wiring resources ship as values-gated opt-ins (StepClusterIssuer, ACME ClusterIssuer, trust-manager Bundle, ESO ClusterSecretStores for AWS SM + GCP SM, step-ca provisioner ExternalSecret); the homelab cluster has the trust-manager Bundle flipped on (`charts/trust-manager/values-homelab.yaml`), the rest remain off pending real inputs. Wave 3 `kubevela` wrapper (operator only), wave 4 `gitea` + `act-runner` (runner needs a manually-created `gitea-runner-token` Secret), wave 5 `kube-prometheus-stack` (first observability wrapper; Grafana / Loki / Tempo / Alloy / SLO rules still to land). Wave 2 (`skylab-crossplane` Configuration pin) and `kubevela-defs` both intentionally deferred — see sections below. Argo CD controller-defaulted-field drift suppressed via fleet-wide `resource.customizations.ignoreDifferences` in `argocd-cm` for ClusterPolicy and APIService. Next: remaining wave 5 wrappers, step-ca chain flip-on in dev.
 - [x] 2. **skylab-terraform** — substantively complete. Seven stacks (bootstrap, identity, storage, roles-anywhere, crossplane, qdevice, gcp-identity) and five modules (aws-github-oidc, aws-object-storage, aws-roles-anywhere, aws-ecs-service, gcp-workload-identity) with fmt/validate/tflint/trivy CI. Modules consistently cloud-prefixed. Follow-ups below.
 - [ ] 3. **skylab-backstage** — not started.
 - [ ] 4. **skylab-crossplane** — not started. The gitops wave 2 Application will pin an OCI package built from this repo.
@@ -58,12 +60,12 @@ Progress through the shared build order:
 
 ### Wave-0 wiring (in-chart, awaiting cluster-level opt-in)
 
-All four resources now ship in their wrapper charts as values-gated opt-ins carrying `argocd.argoproj.io/sync-wave: "1"` (and `"2"` for the ExternalSecret) so Argo orders them after step-ca / step-issuer / ClusterSecretStores are healthy. The homelab cluster still needs to flip the gates on with real values:
+All four resources now ship in their wrapper charts as values-gated opt-ins carrying `argocd.argoproj.io/sync-wave: "1"` (and `"2"` for the ExternalSecret) so Argo orders them after step-ca / step-issuer / ClusterSecretStores are healthy. Flip-on status in homelab:
 
-- `charts/cert-manager` — `clusterIssuers.step` (needs provisioner KID), `clusterIssuers.acme` (needs email + solver)
-- `charts/trust-manager` — `bundles.stepCA`
-- `charts/external-secrets` — `clusterSecretStores.aws` (needs an out-of-band Roles Anywhere credential refresher writing to `eso-aws-credentials`), `clusterSecretStores.gcp` (needs projectID + WIF cluster location/name)
-- `charts/step-ca` — `provisionerSecret` (needs the AWS SM / GCP SM key path)
+- `charts/cert-manager` — `clusterIssuers.step` (needs provisioner KID), `clusterIssuers.acme` (needs email + solver) — **off**
+- `charts/trust-manager` — `bundles.stepCA` — **on** (`charts/trust-manager/values-homelab.yaml`)
+- `charts/external-secrets` — `clusterSecretStores.aws` (needs an out-of-band Roles Anywhere credential refresher writing to `eso-aws-credentials`), `clusterSecretStores.gcp` (needs projectID + WIF cluster location/name) — **off**
+- `charts/step-ca` — `provisionerSecret` (needs the AWS SM / GCP SM key path) — **off**
 
 Still open: ship the AWS Roles Anywhere credential refresher (`aws_signing_helper` sidecar/Deployment) as a first-class component so the AWS CSS works end to end.
 
@@ -83,6 +85,7 @@ Still open: ship the AWS Roles Anywhere credential refresher (`aws_signing_helpe
 
 - OCI push to GHCR on main
 - Rendered-diff PR comment on PRs
+- k3d integration smoke-test on PRs (bring up `task dev:up` in CI, run `kubectl wait` on enabled Applications)
 
 ---
 
@@ -108,8 +111,11 @@ skylab-gitops/
 │   ├── tempo/
 │   ├── grafana/
 │   └── ai/             # model gateway, HolmesGPT, kagent, MCP servers
+├── dev/                # local k3d cluster: config, Argo CD cluster Secret, README
 ├── workloads/          # platform-owned KubeVela Applications
-└── docs/adr/
+├── docs/adr/
+├── Taskfile.yml        # dev loop + lint entry points
+└── renovate.json5      # chart / image / action bumps as PRs
 ```
 
 ### Design decisions
@@ -151,7 +157,7 @@ skylab-gitops/
 - AppProjects per tier (platform, tenants, workloads) with restricted destinations and source repos.
 - Pinned `targetRevision` values everywhere; no `HEAD`.
 - Argo CD installed from a values file, then managing itself; no `--set` flags or insecure mode.
-- Renovate for chart, image and action bumps.
+- Renovate for chart, image and action bumps — self-hosted via `.github/workflows/renovate.yml`, config in `renovate.json5`.
 - Kyverno policies: no `latest` tags, no privileged pods, required owner labels.
 
 ### Done when

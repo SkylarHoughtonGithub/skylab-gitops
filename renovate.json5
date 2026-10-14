@@ -1,0 +1,87 @@
+// Renovate config for skylab-gitops.
+//
+// Runs via `.github/workflows/renovate.yml` on a cron and on manual dispatch.
+// Install the GitHub App at https://github.com/apps/renovate if you'd rather
+// have Mend host it; the workflow and this file both work either way.
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    ':dependencyDashboard',
+    ':semanticCommitTypeAll(chore)',
+  ],
+  labels: ['dependencies', 'renovate'],
+  prConcurrentLimit: 5,
+  prHourlyLimit: 2,
+  // Keep the dashboard issue open so the latest state is always one click away.
+  dependencyDashboardTitle: 'Renovate Dashboard',
+
+  packageRules: [
+    // Group Argo CD chart bumps across all files (Taskfile, bootstrap README,
+    // and the wrapper Chart.yaml) into a single PR — they must move together
+    // or the self-sync-is-a-no-op invariant breaks.
+    {
+      matchPackageNames: ['argo-cd'],
+      matchDatasources: ['helm'],
+      groupName: 'Argo CD chart',
+    },
+    // Dev-cluster bits (k3s image, k3d config) are local tooling; monthly
+    // cadence is enough and keeps the dashboard quieter.
+    {
+      matchFileNames: ['dev/**'],
+      schedule: ['before 7am on the first day of the month'],
+      groupName: 'dev tooling',
+    },
+    // Patch-only automerge for the kubectl hook image — same tag family,
+    // low blast radius, no human review needed.
+    {
+      matchPackageNames: ['bitnamilegacy/kubectl'],
+      matchUpdateTypes: ['patch'],
+      automerge: false,
+    },
+  ],
+
+  // Files Renovate doesn't natively understand.
+  customManagers: [
+    {
+      customType: 'regex',
+      description: 'rancher/k3s image in dev/k3d-config.yaml',
+      fileMatch: ['^dev/k3d-config\\.yaml$'],
+      matchStrings: [
+        'image:\\s+(?<depName>rancher/k3s):(?<currentValue>v[^\\s]+)',
+      ],
+      datasourceTemplate: 'docker',
+    },
+    {
+      customType: 'regex',
+      description: 'Argo CD chart version pinned in Taskfile',
+      fileMatch: ['^Taskfile\\.yml$'],
+      matchStrings: [
+        'ARGO_CD_CHART_VERSION:\\s*(?<currentValue>[0-9.]+)',
+      ],
+      depNameTemplate: 'argo-cd',
+      datasourceTemplate: 'helm',
+      registryUrlTemplate: 'https://argoproj.github.io/argo-helm',
+    },
+    {
+      customType: 'regex',
+      description: 'Argo CD chart version pinned in bootstrap README',
+      fileMatch: ['^bootstrap/README\\.md$'],
+      matchStrings: [
+        'ARGO_CD_CHART_VERSION=(?<currentValue>[0-9.]+)',
+      ],
+      depNameTemplate: 'argo-cd',
+      datasourceTemplate: 'helm',
+      registryUrlTemplate: 'https://argoproj.github.io/argo-helm',
+    },
+    {
+      customType: 'regex',
+      description: 'bitnamilegacy/kubectl hook image in kyverno wrapper',
+      fileMatch: ['^charts/kyverno/values\\.yaml$'],
+      matchStrings: [
+        'repository:\\s+(?<depName>bitnamilegacy/kubectl)\\s*\\n\\s*tag:\\s*[\'"](?<currentValue>[^\'"]+)[\'"]',
+      ],
+      datasourceTemplate: 'docker',
+    },
+  ],
+}
