@@ -1,0 +1,80 @@
+# kube-prometheus-stack owns the monitoring namespace; this wrapper
+# only renders the Namespace resource when run standalone.
+namespace:
+  create: false
+  name: monitoring
+
+alloy:
+  controller:
+    type: daemonset
+
+  alloy:
+    # Minimum viable River config: discover pods, scrape container logs,
+    # ship to Loki with namespace + pod + container + node labels.
+    # Traces + metrics forwarding ship in a follow-up once Tempo and
+    # OTel-emitting workloads exist.
+    configMap:
+      create: true
+      content: |
+        logging {
+          level  = "info"
+          format = "logfmt"
+        }
+
+        discovery.kubernetes "pods" {
+          role = "pod"
+        }
+
+        discovery.relabel "pod_logs" {
+          targets = discovery.kubernetes.pods.targets
+          rule {
+            source_labels = ["__meta_kubernetes_namespace"]
+            target_label  = "namespace"
+          }
+          rule {
+            source_labels = ["__meta_kubernetes_pod_name"]
+            target_label  = "pod"
+          }
+          rule {
+            source_labels = ["__meta_kubernetes_pod_container_name"]
+            target_label  = "container"
+          }
+          rule {
+            source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+            target_label  = "__path__"
+            separator     = "/"
+            replacement   = "/var/log/pods/*$1/*.log"
+          }
+          rule {
+            source_labels = ["__meta_kubernetes_pod_node_name"]
+            target_label  = "node"
+          }
+        }
+
+        loki.source.kubernetes "pod_logs" {
+          targets    = discovery.relabel.pod_logs.output
+          forward_to = [loki.process.labels.receiver]
+        }
+
+        loki.process "labels" {
+          forward_to = [loki.write.default.receiver]
+          stage.static_labels {
+            values = {
+              cluster = env("CLUSTER_NAME"),
+            }
+          }
+        }
+
+        loki.write "default" {
+          endpoint {
+            url = env("LOKI_URL")
+          }
+        }
+
+  # Hardcoded in-cluster endpoint; per-cluster overlays override
+  # LOKI_URL (prod gateway) and CLUSTER_NAME.
+  extraEnv:
+    - name: LOKI_URL
+      value: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+    - name: CLUSTER_NAME
+      value: skylab-dev

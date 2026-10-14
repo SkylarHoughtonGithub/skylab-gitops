@@ -1,0 +1,11 @@
+apiVersion: v2
+name: loki
+description: Skylab wrapper for Loki. Monolithic (SingleBinary) in dev with filesystem storage; production overlays switch to SimpleScalable + S3 once the terraform-outputs contract publishes bucket + role ARNs.
+type: application
+version: 0.1.0
+appVersion: "3.6.12"
+dependencies:
+  - name: loki
+    repository: https://grafana.github.io/helm-charts
+    # Pin deliberately; bump via a PR after reviewing release notes.
+    version: 7.3.0

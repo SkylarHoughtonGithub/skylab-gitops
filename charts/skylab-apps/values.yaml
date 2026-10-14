@@ -114,3 +114,18 @@ components:
     wave: "5"
     namespace: monitoring
     project: platform
+  grafana:
+    enabled: false
+    wave: "5"
+    namespace: monitoring
+    project: platform
+  loki:
+    enabled: false
+    wave: "5"
+    namespace: monitoring
+    project: platform
+  alloy:
+    enabled: false
+    wave: "5"
+    namespace: monitoring
+    project: platform
