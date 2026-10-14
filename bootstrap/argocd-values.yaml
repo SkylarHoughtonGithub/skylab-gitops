@@ -27,6 +27,17 @@ configs:
       return hs
     # Permit the three AppProjects we render out of charts/skylab-apps.
     application.resourceTrackingMethod: annotation
+    # Fleet-wide ignoreDifferences for fields that in-cluster controllers
+    # populate at admission or runtime. Without these, Argo reports every
+    # affected resource as OutOfSync forever even though nothing is wrong.
+    resource.customizations.ignoreDifferences.kyverno.io_ClusterPolicy: |
+      jsonPointers:
+        - /spec/admission
+        - /spec/background
+        - /spec/emitWarning
+    resource.customizations.ignoreDifferences.apiregistration.k8s.io_APIService: |
+      jsonPointers:
+        - /spec/caBundle
   rbac:
     policy.default: role:readonly
 
