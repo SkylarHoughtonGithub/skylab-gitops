@@ -2,7 +2,7 @@ apiVersion: v2
 name: kubevela
 description: Skylab wrapper for KubeVela (vela-core). The platform's Application API — ComponentDefinitions and TraitDefinitions ship in a follow-up chart alongside the first golden-path template.
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "1.9.11"
 dependencies:
   - name: vela-core

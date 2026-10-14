@@ -16,7 +16,7 @@ tests:
           path: metadata.labels["skylab.io/component"]
           value: kube-prometheus-stack
       - equal:
-          path: metadata.labels["skylab.io/wave"]
+          path: metadata.annotations["skylab.io/wave"]
           value: "5"
 
   - it: skips the Namespace when namespace.create is false
