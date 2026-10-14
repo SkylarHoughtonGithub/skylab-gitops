@@ -20,3 +20,12 @@ kyverno:
   features:
     policyExceptions:
       enabled: true
+
+  # Bitnami removed `bitnami/kubectl:1.30.2` from Docker Hub in 2026, which
+  # breaks every Helm hook that uses it (seen in dev as `kyverno-clean-reports`
+  # stuck in ImagePullBackOff on upgrade). `bitnamilegacy` is Bitnami's archive
+  # repo for the removed images; drop-in replacement, same tag.
+  policyReportsCleanup:
+    image:
+      repository: bitnamilegacy/kubectl
+      tag: "1.30.2"
