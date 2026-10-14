@@ -1,0 +1,29 @@
+# kube-prometheus-stack owns the monitoring namespace; this wrapper
+# only renders the Namespace resource when run standalone.
+namespace:
+  create: false
+  name: monitoring
+
+sloth:
+  sloth:
+    # Default 30d SLO window — a sensible starting point for most
+    # services. Per-SLO overrides live on the PrometheusServiceLevel CR.
+    defaultSloPeriod: 30d
+    # Add a provenance label to every generated PrometheusRule so it's
+    # easy to filter in Grafana / Alertmanager.
+    extraLabels:
+      skylab.io/generated-by: sloth
+
+  # Fleet-wide ServiceMonitor; the kube-prometheus-stack discovery
+  # (label-less) picks it up.
+  serviceMonitor:
+    enabled: true
+
+  # Modest default; dev load is near zero.
+  resources:
+    requests:
+      cpu: 10m
+      memory: 50Mi
+    limits:
+      cpu: 100m
+      memory: 150Mi

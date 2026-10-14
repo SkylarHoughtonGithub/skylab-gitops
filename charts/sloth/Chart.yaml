@@ -1,0 +1,11 @@
+apiVersion: v2
+name: sloth
+description: Skylab wrapper for Sloth. Controller that watches PrometheusServiceLevel CRs and generates burn-rate PrometheusRules. No workloads yet; CRs ship from workload wrappers as SLOs are defined.
+type: application
+version: 0.1.0
+appVersion: "v0.11.0"
+dependencies:
+  - name: sloth
+    repository: https://slok.github.io/sloth
+    # Pin deliberately; bump via a PR after reviewing release notes.
+    version: 0.16.0

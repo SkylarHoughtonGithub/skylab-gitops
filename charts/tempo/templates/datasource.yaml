@@ -1,0 +1,33 @@
+{{- if .Values.datasource.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-grafana-datasource
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    skylab.io/component: tempo
+    # Picked up by Grafana's provisioning sidecar.
+    grafana_datasource: "1"
+data:
+  tempo-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: {{ .Values.datasource.url }}
+        jsonData:
+          # Links from Tempo spans to Loki logs and Prometheus metrics,
+          # keyed on common labels. Enables metrics-to-traces-to-logs.
+          tracesToLogsV2:
+            datasourceUid: loki
+            tags:
+              - key: cluster
+              - key: namespace
+              - key: pod
+          tracesToMetrics:
+            datasourceUid: prometheus
+          serviceMap:
+            datasourceUid: prometheus
+{{- end }}
