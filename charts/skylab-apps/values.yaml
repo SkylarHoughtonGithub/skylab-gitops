@@ -94,3 +94,8 @@ components:
     wave: "1"
     namespace: crossplane-system
     project: platform
+  kubevela:
+    enabled: false
+    wave: "3"
+    namespace: vela-system
+    project: platform

@@ -20,3 +20,5 @@ components:
     enabled: true
   crossplane-providers:
     enabled: true
+  kubevela:
+    enabled: true
