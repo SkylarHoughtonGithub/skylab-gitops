@@ -1,0 +1,22 @@
+{{- if .Values.clusterIssuers.step.enabled }}
+apiVersion: certmanager.step.sm/v1beta1
+kind: StepClusterIssuer
+metadata:
+  name: {{ .Values.clusterIssuers.step.name }}
+  annotations:
+    # step-issuer and its CRDs ship at wave 0; defer this resource so Argo
+    # does not try to apply the StepClusterIssuer before its CRD exists.
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    skylab.io/component: cert-manager
+spec:
+  url: {{ .Values.clusterIssuers.step.url }}
+  caBundle: {{ .Values.clusterIssuers.step.caBundle | quote }}
+  provisioner:
+    name: {{ .Values.clusterIssuers.step.provisioner.name }}
+    kid: {{ .Values.clusterIssuers.step.provisioner.kid | quote }}
+    passwordRef:
+      name: {{ .Values.clusterIssuers.step.provisioner.passwordRef.name }}
+      namespace: {{ .Values.clusterIssuers.step.provisioner.passwordRef.namespace }}
+      key: {{ .Values.clusterIssuers.step.provisioner.passwordRef.key }}
+{{- end }}

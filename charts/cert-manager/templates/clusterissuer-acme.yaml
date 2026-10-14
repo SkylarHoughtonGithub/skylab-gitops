@@ -1,0 +1,18 @@
+{{- if .Values.clusterIssuers.acme.enabled }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.clusterIssuers.acme.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    skylab.io/component: cert-manager
+spec:
+  acme:
+    server: {{ .Values.clusterIssuers.acme.server }}
+    email: {{ required ".Values.clusterIssuers.acme.email is required when ACME is enabled" .Values.clusterIssuers.acme.email }}
+    privateKeySecretRef:
+      name: {{ .Values.clusterIssuers.acme.privateKeySecretName }}
+    solvers:
+      {{- toYaml .Values.clusterIssuers.acme.solvers | nindent 6 }}
+{{- end }}

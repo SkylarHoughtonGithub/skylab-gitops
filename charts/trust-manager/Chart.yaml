@@ -2,7 +2,7 @@ apiVersion: v2
 name: trust-manager
 description: Skylab wrapper for jetstack/trust-manager. Distributes the step-ca root as a Bundle to every namespace that needs CA trust.
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "0.15.0"
 dependencies:
   - name: trust-manager

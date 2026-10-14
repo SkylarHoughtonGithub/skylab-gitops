@@ -7,3 +7,25 @@ trust-manager:
   app:
     trust:
       namespace: cert-manager
+
+# Bundles distributed to tenant namespaces. Each is default-off; enable
+# per cluster. Sync-wave 1 so Argo waits for step-ca to publish its root
+# Secret before trust-manager tries to source it.
+bundles:
+  stepCA:
+    enabled: false
+    name: skylab-ca
+    # Source: step-ca's auto-generated Secret in the step-ca namespace.
+    # The step-certificates chart publishes the root under this key.
+    sourceSecret:
+      name: step-ca-certs
+      key: root_ca.crt
+    target:
+      # ConfigMap of this name lands in every namespace matched below.
+      # Mount at /etc/ssl/certs/skylab-ca.crt or set NODE_EXTRA_CA_CERTS.
+      configMapKey: ca.crt
+      # Optional JKS / PKCS12 formats for JVM / .NET consumers.
+      additionalFormats: {}
+      # Namespaces opt in with this label.
+      namespaceSelector:
+        skylab.io/trust: enabled

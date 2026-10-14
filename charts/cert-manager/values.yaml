@@ -12,3 +12,44 @@ cert-manager:
     enabled: true
     servicemonitor:
       enabled: false  # enable in wave 5 once kube-prometheus-stack is up
+
+# ClusterIssuers. Default-off; enable per cluster once step-ca is live
+# and (for ACME) the solver's DNS or HTTP01 prereqs are in place.
+clusterIssuers:
+  step:
+    enabled: false
+    name: skylab-step
+    # Internal step-ca endpoint. The step-certificates chart defaults to
+    # port 9000 on an in-cluster Service in the step-ca namespace.
+    url: https://step-ca.step-ca.svc.cluster.local
+    # Base64-encoded step-ca root PEM. Leave blank to force Kubernetes'
+    # trust store (requires trust-manager Bundle landed into cert-manager
+    # namespace via the `skylab.io/trust=enabled` label).
+    caBundle: ""
+    provisioner:
+      name: admin
+      # KID from `step ca provisioner list` on the running step-ca; set
+      # per cluster.
+      kid: ""
+      # Secret holding the provisioner password. Lands via the step-ca
+      # chart's ExternalSecret once ClusterSecretStores are enabled.
+      passwordRef:
+        name: step-ca-provisioner-password
+        namespace: step-ca
+        key: password
+
+  acme:
+    enabled: false
+    name: skylab-acme
+    # Default to Let's Encrypt production. Flip to the staging endpoint
+    # for first-time wiring.
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ""
+    privateKeySecretName: skylab-acme-account-key
+    # List of ACME solvers. Caller provides at least one (DNS01 or HTTP01).
+    # Example (DNS01 with route53):
+    #   - dns01:
+    #       route53:
+    #         region: us-east-1
+    #         role: arn:aws:iam::123456789012:role/cert-manager-dns01
+    solvers: []

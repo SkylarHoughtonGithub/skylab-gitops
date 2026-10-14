@@ -2,7 +2,7 @@ apiVersion: v2
 name: step-ca
 description: Skylab wrapper for step-ca (smallstep CA). The root of trust for internal certificates and for IAM Roles Anywhere / GCP WIF.
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "0.30.2"
 dependencies:
   - name: step-certificates
