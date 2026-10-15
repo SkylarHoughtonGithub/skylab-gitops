@@ -8,4 +8,4 @@ dependencies:
   - name: argo-cd
     repository: https://argoproj.github.io/argo-helm
     # Pin deliberately; bump via a PR after reviewing release notes.
-    version: 7.8.0
+    version: 7.9.1
