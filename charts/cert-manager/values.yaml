@@ -38,7 +38,7 @@ clusterIssuers:
         rootConfigMapKey: root_ca.crt
       image:
         repository: alpine/k8s
-        tag: "1.33.13"
+        tag: "1.37.1"
     name: skylab-step
     # Internal step-ca endpoint. The step-certificates chart defaults to
     # port 9000 on an in-cluster Service in the step-ca namespace.
