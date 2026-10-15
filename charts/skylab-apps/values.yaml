@@ -34,6 +34,12 @@ appProjects:
     destinations:
       - server: '*'
         namespace: '*'
+    # Only Namespace is cluster-scoped; everything else a workload needs
+    # (Deployment, Service, Secret, Certificate, PrometheusServiceLevel)
+    # is namespaced and rendered downstream by KubeVela, not by Argo CD.
+    clusterResourceWhitelist:
+      - group: ""
+        kind: Namespace
     namespaceResourceWhitelist:
       - group: core.oam.dev
         kind: '*'
@@ -48,6 +54,7 @@ appProjects:
 #   project           - AppProject (default: platform)
 #   path              - repo path to the component chart (default: charts/<name>)
 #   extraValueFiles   - extra values files relative to the chart path
+#   sourceType        - "helm" (default) or "directory" for raw manifests
 components:
   argo-cd:
     enabled: false
@@ -139,3 +146,14 @@ components:
     wave: "5"
     namespace: monitoring
     project: platform
+  # First real workload: proves cert-manager (StepClusterIssuer),
+  # Tempo (OTel traces) and Sloth (PrometheusServiceLevel) end-to-end.
+  # Raw-manifest source — the Application CR is hand-written rather
+  # than scaffolded through a Backstage template.
+  demo-service:
+    enabled: false
+    wave: "10"
+    namespace: demo-service
+    project: workloads
+    path: workloads/demo-service
+    sourceType: directory

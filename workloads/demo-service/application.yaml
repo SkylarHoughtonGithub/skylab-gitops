@@ -1,0 +1,157 @@
+# End-to-end stack-proof workload. Argo CD (wave 10) applies this
+# KubeVela Application; KubeVela expands it into Deployments, Services,
+# a Certificate (step-ca via StepClusterIssuer), a ServiceMonitor and
+# a Sloth PrometheusServiceLevel.
+#
+# What this exercises:
+#   wave -1: cert-manager renders a cert from the StepClusterIssuer into
+#            the `demo-service-tls` Secret.
+#   wave  0: step-ca signs the CSR; step-issuer brokers it.
+#   wave  3: KubeVela renders the two webservice components.
+#   wave  5: kube-prometheus-stack discovers the ServiceMonitor and
+#            scrapes `up`; Tempo accepts OTLP traces from the tracegen
+#            Pod; Sloth compiles the PrometheusServiceLevel into a
+#            burn-rate PrometheusRule.
+#
+# No per-cluster values yet — this is the hand-written baseline that
+# `skylab-backstage` will later generate from a golden-path template.
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: demo-service
+  namespace: demo-service
+  labels:
+    owner: platform
+    app.kubernetes.io/name: demo-service
+spec:
+  components:
+    # Minimal HTTP service. nginxdemos/hello returns a request-info page;
+    # /metrics 404s, so Prometheus records `up=0` on every scrape — which
+    # still gives Sloth a real time series to compute an SLO against.
+    - name: web
+      type: webservice
+      properties:
+        image: nginxdemos/hello:plain-text
+        imagePullPolicy: IfNotPresent
+        ports:
+          - port: 80
+            expose: true
+        labels:
+          owner: platform
+          app.kubernetes.io/name: demo-service
+          app.kubernetes.io/component: web
+
+    # Continuous OTLP trace generator → Tempo. Pins to a specific
+    # telemetrygen tag so Kyverno's no-`latest` policy passes.
+    - name: tracegen
+      type: webservice
+      properties:
+        image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.113.0
+        imagePullPolicy: IfNotPresent
+        cmd:
+          - /telemetrygen
+          - traces
+          - --otlp-insecure
+          - --otlp-endpoint=tempo.monitoring.svc.cluster.local:4317
+          - --rate=1
+          - --duration=24h
+          - --service=demo-service
+        labels:
+          owner: platform
+          app.kubernetes.io/name: demo-service
+          app.kubernetes.io/component: tracegen
+
+    # Everything cert-manager / Prometheus Operator / Sloth watch is
+    # namespaced and lives behind their own CRDs — raw manifests are the
+    # cleanest route until kubevela-defs ships the matching traits.
+    - name: addons
+      type: k8s-objects
+      properties:
+        objects:
+          # Internal TLS cert from step-ca via step-issuer. Secret lands
+          # as `demo-service-tls`; no app wires it up yet — the point
+          # here is to prove StepClusterIssuer renders a cert end-to-end.
+          - apiVersion: cert-manager.io/v1
+            kind: Certificate
+            metadata:
+              name: demo-service-tls
+              namespace: demo-service
+              labels:
+                owner: platform
+                app.kubernetes.io/name: demo-service
+            spec:
+              secretName: demo-service-tls
+              commonName: demo-service.demo-service.svc.cluster.local
+              dnsNames:
+                - demo-service.demo-service.svc.cluster.local
+                - demo-service.demo-service.svc
+              duration: 24h
+              renewBefore: 8h
+              privateKey:
+                algorithm: ECDSA
+                size: 256
+              issuerRef:
+                group: certmanager.step.sm
+                kind: StepClusterIssuer
+                name: step
+
+          # Point Prometheus at the web Service by component label. The
+          # scrape path /metrics 404s on nginxdemos/hello, so `up=0` —
+          # which is deliberate: it gives the Sloth SLO a non-trivial
+          # error budget to burn in demos.
+          - apiVersion: monitoring.coreos.com/v1
+            kind: ServiceMonitor
+            metadata:
+              name: demo-service-web
+              namespace: demo-service
+              labels:
+                owner: platform
+                app.kubernetes.io/name: demo-service
+            spec:
+              selector:
+                matchLabels:
+                  app.kubernetes.io/name: demo-service
+                  app.kubernetes.io/component: web
+              endpoints:
+                - targetPort: 80
+                  path: /metrics
+                  interval: 30s
+
+          # Sloth compiles this into a PrometheusRule with multi-window
+          # multi-burn-rate alerts. SLI uses `up` filtered by namespace,
+          # which every scrape target emits — so the rule is always
+          # queryable, independent of the service exposing /metrics.
+          - apiVersion: sloth.slok.dev/v1
+            kind: PrometheusServiceLevel
+            metadata:
+              name: demo-service
+              namespace: demo-service
+              labels:
+                owner: platform
+                app.kubernetes.io/name: demo-service
+            spec:
+              service: demo-service
+              labels:
+                owner: platform
+              slos:
+                - name: scrape-availability
+                  objective: 99.0
+                  description: 99% of ServiceMonitor scrapes succeed over 30d.
+                  sli:
+                    raw:
+                      error_ratio_query: |
+                        1 - avg_over_time(
+                          up{namespace="demo-service", service="web"}[{{.window}}]
+                        )
+                  alerting:
+                    name: DemoServiceScrapeDown
+                    labels:
+                      category: availability
+                    annotations:
+                      summary: demo-service /metrics scrapes failing
+                    page_alert:
+                      labels:
+                        severity: page
+                    ticket_alert:
+                      labels:
+                        severity: ticket

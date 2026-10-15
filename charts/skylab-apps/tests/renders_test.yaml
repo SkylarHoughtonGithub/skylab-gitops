@@ -30,6 +30,14 @@ tests:
         equal:
           path: metadata.namespace
           value: argocd
+      # workloads project allows Namespace creation so Argo CD can
+      # bring up a workload's namespace via CreateNamespace=true.
+      - documentIndex: 2
+        contains:
+          path: spec.clusterResourceWhitelist
+          content:
+            group: ""
+            kind: Namespace
 
   - it: renders no Applications when nothing is enabled
     template: templates/applications.yaml
@@ -90,3 +98,50 @@ tests:
         equal:
           path: spec.syncPolicy.automated.selfHeal
           value: true
+
+  # Default source is helm: the Application's source block carries a
+  # `helm:` with values.yaml plus any extraValueFiles.
+  - it: emits a helm source block by default
+    template: templates/applications.yaml
+    set:
+      components:
+        cert-manager:
+          enabled: true
+          wave: "-1"
+          namespace: cert-manager
+          project: platform
+          extraValueFiles:
+            - values-skylab-dev.yaml
+    asserts:
+      - documentIndex: 0
+        equal:
+          path: spec.source.helm.valueFiles
+          value:
+            - values.yaml
+            - values-skylab-dev.yaml
+
+  # Directory source: no `helm:` block, so Argo CD syncs the path as
+  # raw manifests. Used by workloads under workloads/<name>/.
+  - it: omits the helm block when sourceType is directory
+    template: templates/applications.yaml
+    set:
+      components:
+        demo-service:
+          enabled: true
+          wave: "10"
+          namespace: demo-service
+          project: workloads
+          path: workloads/demo-service
+          sourceType: directory
+    asserts:
+      - documentIndex: 0
+        equal:
+          path: spec.source.path
+          value: workloads/demo-service
+      - documentIndex: 0
+        equal:
+          path: spec.project
+          value: workloads
+      - documentIndex: 0
+        notExists:
+          path: spec.source.helm

@@ -15,6 +15,7 @@ spec:
     repoURL: {{ default $root.Values.repoURL $comp.repoURL }}
     targetRevision: {{ default $root.Values.targetRevision $comp.targetRevision }}
     path: {{ include "skylab-apps.componentPath" (dict "name" $name "component" $comp) }}
+    {{- if ne (default "helm" $comp.sourceType) "directory" }}
     helm:
       ignoreMissingValueFiles: true
       valueFiles:
@@ -22,6 +23,7 @@ spec:
         {{- range $f := $comp.extraValueFiles | default list }}
         - {{ $f }}
         {{- end }}
+    {{- end }}
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ include "skylab-apps.componentNamespace" (dict "name" $name "component" $comp) }}
