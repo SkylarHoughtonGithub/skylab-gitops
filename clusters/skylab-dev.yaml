@@ -50,6 +50,11 @@ components:
   sloth:
     enabled: true
 
+  # First real workload. Proves cert-manager (StepClusterIssuer),
+  # Tempo (OTel traces) and Sloth (PrometheusServiceLevel) end-to-end.
+  demo-service:
+    enabled: true
+
   # Default-off in dev until their external prereqs are stubbed:
   #   crossplane / crossplane-providers    — need cloud credentials
   #   gitea / act-runner                   — act-runner needs a token Secret
