@@ -50,6 +50,14 @@ components:
   sloth:
     enabled: true
 
+  # Backstage. Pulls ghcr.io/skylarhoughtongithub/skylab-backstage:latest.
+  # OIDC + Gitea integration env vars default to empty strings so the
+  # sign-in page falls back to guest and the Gitea entity-discovery
+  # provider logs a config error — expected until Gitea (wave 4) is
+  # enabled with credentials wired via ExternalSecret.
+  backstage:
+    enabled: true
+
   # First real workload. Proves cert-manager (StepClusterIssuer),
   # Tempo (OTel traces) and Sloth (PrometheusServiceLevel) end-to-end.
   demo-service:

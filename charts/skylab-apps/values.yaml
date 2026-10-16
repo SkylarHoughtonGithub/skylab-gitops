@@ -146,6 +146,11 @@ components:
     wave: "5"
     namespace: monitoring
     project: platform
+  backstage:
+    enabled: false
+    wave: "6"
+    namespace: backstage
+    project: platform
   # First real workload: proves cert-manager (StepClusterIssuer),
   # Tempo (OTel traces) and Sloth (PrometheusServiceLevel) end-to-end.
   # Raw-manifest source — the Application CR is hand-written rather
