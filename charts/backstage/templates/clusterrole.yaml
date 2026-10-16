@@ -1,0 +1,69 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: backstage-view
+  labels:
+    skylab.io/component: backstage
+rules:
+  # Read-only on the standard workload / networking / config objects that
+  # Backstage's Kubernetes plugin surfaces on each entity page.
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - configmaps
+      - secrets
+      - events
+      - nodes
+      - namespaces
+      - limitranges
+      - resourcequotas
+      - persistentvolumeclaims
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - networkpolicies
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - pods
+      - nodes
+    verbs: ["get", "list"]
+  # KubeVela custom resources — matches the customResources list in the
+  # skylab-backstage app-config so Applications / Component- and
+  # TraitDefinitions show up on entity pages.
+  - apiGroups: ["core.oam.dev"]
+    resources:
+      - applications
+      - componentdefinitions
+      - traitdefinitions
+    verbs: ["get", "list", "watch"]
+  # Crossplane custom resources — same reason.
+  - apiGroups: ["apiextensions.crossplane.io"]
+    resources:
+      - compositeresourcedefinitions
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["pkg.crossplane.io"]
+    resources:
+      - providers
+    verbs: ["get", "list", "watch"]
+{{- end }}

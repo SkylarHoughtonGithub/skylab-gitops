@@ -2,6 +2,12 @@ namespace:
   create: true
   name: backstage
 
+# ClusterRole + ClusterRoleBinding so the pod's SA can read the standard
+# workload objects + KubeVela / Crossplane CRs that Backstage's Kubernetes
+# plugin lists on entity pages. Scoped read-only, cluster-wide.
+rbac:
+  create: true
+
 backstage:
   backstage:
     image:
@@ -32,11 +38,12 @@ backstage:
         value: ""
       - name: GITEA_TOKEN
         value: ""
-      # Kubernetes plugin: dev points at the in-cluster API via the pod's
-      # own ServiceAccount, so no URL/token needed — the chart's default
-      # ServiceAccount gets the right RBAC further down.
+      # Kubernetes plugin: in-cluster API via the pod's own ServiceAccount
+      # (ClusterRole + ClusterRoleBinding below). The Backstage plugin reads
+      # the mounted SA token + CA automatically when SA_TOKEN / CA_DATA are
+      # omitted and URL points at the in-cluster API.
       - name: K8S_HOMELAB_URL
-        value: ""
+        value: https://kubernetes.default.svc
       - name: K8S_HOMELAB_SA_TOKEN
         value: ""
       - name: K8S_HOMELAB_CA_DATA
