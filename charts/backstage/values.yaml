@@ -1,0 +1,92 @@
+namespace:
+  create: true
+  name: backstage
+
+backstage:
+  backstage:
+    image:
+      registry: ghcr.io
+      repository: skylarhoughtongithub/skylab-backstage
+      tag: latest
+      pullPolicy: Always
+
+    # Backstage reads app-config.yaml from the image; secrets + per-env
+    # URLs come from env vars so the same image boots in dev, staging and
+    # prod. Values here are the dev defaults; prod/homelab overlays swap
+    # these for ExternalSecret-backed Secrets via `extraEnvVarsSecrets`.
+    extraEnvVars:
+      # OIDC (Gitea). Empty in dev → sign-in page falls back to guest.
+      - name: GITEA_OIDC_METADATA_URL
+        value: ""
+      - name: GITEA_OIDC_CLIENT_ID
+        value: ""
+      - name: GITEA_OIDC_CLIENT_SECRET
+        value: ""
+      # Gitea integration (host + API PAT) for catalog discovery +
+      # gitea:pull-request scaffolder action.
+      - name: GITEA_HOST
+        value: gitea.gitea.svc.cluster.local:3000
+      - name: GITEA_BASE_URL
+        value: http://gitea.gitea.svc.cluster.local:3000
+      - name: GITEA_USERNAME
+        value: ""
+      - name: GITEA_TOKEN
+        value: ""
+      # Kubernetes plugin: dev points at the in-cluster API via the pod's
+      # own ServiceAccount, so no URL/token needed — the chart's default
+      # ServiceAccount gets the right RBAC further down.
+      - name: K8S_HOMELAB_URL
+        value: ""
+      - name: K8S_HOMELAB_SA_TOKEN
+        value: ""
+      - name: K8S_HOMELAB_CA_DATA
+        value: ""
+      # Argo CD plugin.
+      - name: ARGOCD_HOMELAB_URL
+        value: http://argocd-server.argocd.svc.cluster.local
+      - name: ARGOCD_USERNAME
+        value: admin
+      - name: ARGOCD_PASSWORD
+        value: ""
+      # Grafana plugin — proxy target + the browser-facing URL (same here).
+      - name: GRAFANA_URL
+        value: http://grafana.monitoring.svc.cluster.local
+      - name: GRAFANA_TOKEN
+        value: ""
+      # app-config references ${APP_BASE_URL} for the frontend URL;
+      # bitnami chart's default is http://localhost:7007 unless overridden.
+      - name: APP_BASE_URL
+        value: http://localhost:7007
+      - name: BACKEND_BASE_URL
+        value: http://localhost:7007
+
+    args:
+      - --config
+      - app-config.yaml
+      - --config
+      - app-config.production.yaml
+
+  # Postgres: dev uses the chart's bundled bitnami/postgresql. Prod will
+  # replace this with an external Crossplane-managed Postgres via a
+  # Secret override.
+  postgresql:
+    enabled: true
+    auth:
+      username: backstage
+      database: backstage
+      password: backstage
+
+  service:
+    type: ClusterIP
+    ports:
+      backend: 7007
+
+  serviceAccount:
+    create: true
+    name: backstage
+
+  # Ingress stays off in dev; the chart deploys ClusterIP + we port-forward
+  # from `task dev:up`. Prod overlays flip this on behind the step-ca
+  # cert-manager Certificate.
+  ingress:
+    enabled: false

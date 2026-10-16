@@ -1,0 +1,11 @@
+apiVersion: v2
+name: backstage
+description: Skylab wrapper for Backstage. Front door for the platform — catalog, templates, MCP actions for AI clients. Pins the image published by skylab-backstage CI; env for Kubernetes / Argo CD / Grafana / Gitea / OIDC come from env vars that the deploy env wires up (dev leaves them unset so Backstage boots in degraded mode).
+type: application
+version: 0.1.0
+appVersion: "1.46.0"
+dependencies:
+  - name: backstage
+    repository: https://backstage.github.io/charts
+    # Pin deliberately; bump via a PR after reviewing release notes.
+    version: 2.10.2
