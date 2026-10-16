@@ -1,0 +1,94 @@
+{{- if .Values.componentDefinitions.goService.enabled }}
+apiVersion: core.oam.dev/v1beta1
+kind: ComponentDefinition
+metadata:
+  name: go-service
+  namespace: {{ .Values.namespace.name }}
+  annotations:
+    definition.oam.dev/description: >-
+      Skylab opinionated Go service. Thin wrapper around webservice that
+      bakes in OTel env (to in-cluster Alloy), skylab.io/system labels,
+      and /healthz liveness + readiness probes.
+spec:
+  workload:
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+  schematic:
+    cue:
+      template: |
+        parameter: {
+          // Container image. Required.
+          image: string
+          // Number of pod replicas.
+          replicas: *1 | int
+          // Container port (also the Service port).
+          port: *8080 | int
+          // OTLP gRPC endpoint. Dev default is the in-cluster Alloy.
+          otelEndpoint: *"http://alloy.monitoring.svc:4317" | string
+          // Marks the OTLP connection as insecure (plaintext). Flip to
+          // false once Alloy fronts an mTLS listener.
+          otelInsecure: *"true" | string
+        }
+
+        output: {
+          apiVersion: "apps/v1"
+          kind:       "Deployment"
+          metadata: labels: {
+            "app.kubernetes.io/name":       context.name
+            "app.kubernetes.io/managed-by": "kubevela"
+            "skylab.io/system":             context.name
+          }
+          spec: {
+            replicas: parameter.replicas
+            selector: matchLabels: "app.kubernetes.io/name": context.name
+            template: {
+              metadata: labels: {
+                "app.kubernetes.io/name": context.name
+                "skylab.io/system":       context.name
+              }
+              spec: containers: [{
+                name:  context.name
+                image: parameter.image
+                ports: [{
+                  name:          "http"
+                  containerPort: parameter.port
+                }]
+                env: [
+                  {name: "OTEL_SERVICE_NAME", value:          context.name},
+                  {name: "OTEL_EXPORTER_OTLP_ENDPOINT", value: parameter.otelEndpoint},
+                  {name: "OTEL_EXPORTER_OTLP_INSECURE", value: parameter.otelInsecure},
+                ]
+                livenessProbe: httpGet: {
+                  path: "/healthz"
+                  port: parameter.port
+                }
+                readinessProbe: httpGet: {
+                  path: "/healthz"
+                  port: parameter.port
+                }
+              }]
+            }
+          }
+        }
+
+        outputs: service: {
+          apiVersion: "v1"
+          kind:       "Service"
+          metadata: {
+            name: context.name
+            labels: {
+              "app.kubernetes.io/name": context.name
+              "skylab.io/system":       context.name
+            }
+          }
+          spec: {
+            selector: "app.kubernetes.io/name": context.name
+            ports: [{
+              name:       "http"
+              port:       parameter.port
+              targetPort: parameter.port
+            }]
+          }
+        }
+{{- end }}
