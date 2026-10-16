@@ -1,0 +1,18 @@
+# The kubevela wrapper chart owns the vela-system namespace; this chart
+# only drops its CRs in. Flip `createNamespace` on when running standalone.
+namespace:
+  create: false
+  name: vela-system
+
+componentDefinitions:
+  # Thin wrapper around `webservice` that bakes in Skylab opinions:
+  #   - OTEL_SERVICE_NAME + OTLP endpoint pointing at in-cluster Alloy
+  #   - skylab.io/system labels so Prometheus / Argo CD / Grafana selectors
+  #     from skylab-backstage work out of the box
+  #   - /healthz liveness + readiness probes
+  # Backstage's go-service template re-renders its tenants-pr Application
+  # to use this component once it's in place.
+  goService:
+    enabled: true
+
+traitDefinitions: {}

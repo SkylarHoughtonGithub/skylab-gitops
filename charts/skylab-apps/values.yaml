@@ -106,6 +106,11 @@ components:
     wave: "3"
     namespace: vela-system
     project: platform
+  kubevela-defs:
+    enabled: false
+    wave: "3"
+    namespace: vela-system
+    project: platform
   gitea:
     enabled: false
     wave: "4"

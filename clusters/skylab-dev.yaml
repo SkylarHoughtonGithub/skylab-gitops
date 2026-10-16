@@ -19,6 +19,11 @@ components:
     enabled: true
   kubevela:
     enabled: true
+  # ComponentDefinitions (currently just `go-service`) that Backstage
+  # golden-path templates render into platform/tenants Applications.
+  # Lives alongside the kubevela operator in vela-system.
+  kubevela-defs:
+    enabled: true
 
   # Trust layer. step-ca's auto-generated admin provisioner is enough for
   # dev; provisionerSecret stays off (that path needs AWS SM / GCP SM).
