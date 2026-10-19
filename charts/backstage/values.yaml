@@ -13,8 +13,8 @@ backstage:
     image:
       registry: ghcr.io
       repository: skylarhoughtongithub/skylab-backstage
-      tag: latest
-      pullPolicy: Always
+      tag: v0.1.0
+      pullPolicy: IfNotPresent
 
     # Backstage reads app-config.yaml from the image; secrets + per-env
     # URLs come from env vars so the same image boots in dev, staging and
