@@ -83,5 +83,14 @@
       ],
       datasourceTemplate: 'docker',
     },
+    {
+      customType: 'regex',
+      description: 'skylab-platform Configuration package pin',
+      fileMatch: ['^charts/skylab-crossplane/values\\.yaml$'],
+      matchStrings: [
+        'package:\\s+(?<depName>ghcr\\.io/skylarhoughtongithub/skylab-platform):(?<currentValue>v\\d+\\.\\d+\\.\\d+)',
+      ],
+      datasourceTemplate: 'docker',
+    },
   ],
 }
