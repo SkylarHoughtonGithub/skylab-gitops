@@ -32,12 +32,19 @@
       schedule: ['before 7am on the first day of the month'],
       groupName: 'dev tooling',
     },
-    // Patch-only automerge for the kubectl hook image — same tag family,
-    // low blast radius, no human review needed.
+    // Automerge low-risk updates once branch checks pass. Reviewers
+    // still see failing CI stop the merge, and we keep minor/major
+    // bumps on charts (data-loss risk for stateful components) in the
+    // manual lane.
     {
-      matchPackageNames: ['bitnamilegacy/kubectl'],
-      matchUpdateTypes: ['patch'],
-      automerge: false,
+      matchUpdateTypes: ['patch', 'pin', 'digest'],
+      automerge: true,
+    },
+    // Owned-repo bumps automerge regardless of level — we control the
+    // package contents and release-please gates each tag on CI there.
+    {
+      matchDepNames: ['ghcr.io/skylarhoughtongithub/skylab-platform'],
+      automerge: true,
     },
   ],
 
