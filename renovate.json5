@@ -11,8 +11,8 @@
     ':semanticCommitTypeAll(chore)',
   ],
   labels: ['dependencies', 'renovate'],
-  prConcurrentLimit: 5,
-  prHourlyLimit: 2,
+  prConcurrentLimit: 10,
+  prHourlyLimit: 6,
   // Keep the dashboard issue open so the latest state is always one click away.
   dependencyDashboardTitle: 'Renovate Dashboard',
 
