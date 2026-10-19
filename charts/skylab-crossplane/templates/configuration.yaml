@@ -1,0 +1,11 @@
+apiVersion: pkg.crossplane.io/v1
+kind: Configuration
+metadata:
+  name: {{ .Values.configuration.name }}
+  labels:
+    skylab.io/component: skylab-crossplane
+spec:
+  package: {{ .Values.configuration.package }}
+  packagePullPolicy: {{ .Values.configuration.packagePullPolicy }}
+  revisionActivationPolicy: {{ .Values.configuration.revisionActivationPolicy }}
+  revisionHistoryLimit: {{ .Values.configuration.revisionHistoryLimit }}

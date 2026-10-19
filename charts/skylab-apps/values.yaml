@@ -101,6 +101,11 @@ components:
     wave: "1"
     namespace: crossplane-system
     project: platform
+  skylab-crossplane:
+    enabled: false
+    wave: "2"
+    namespace: crossplane-system
+    project: platform
   kubevela:
     enabled: false
     wave: "3"
