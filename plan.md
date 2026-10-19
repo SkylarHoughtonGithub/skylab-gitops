@@ -87,6 +87,15 @@ Still open: ship the AWS Roles Anywhere credential refresher (`aws_signing_helpe
 - Rendered-diff PR comment on PRs
 - k3d integration smoke-test on PRs (bring up `task dev:up` in CI, run `kubectl wait` on enabled Applications)
 
+### Platform-wide follow-ups (cross-repo)
+
+Shared tooling and conventions that span every repo (gitops, terraform, backstage, crossplane). Captured here because this repo is the hub; implementation lands across all four.
+
+- **Reusable CI image.** Bake a container with pinned versions of `crossplane`, `kubeconform`, `helm`, `ct`, `helm-unittest`, `task`, `tflint`, `trivy`, and the Argo CD CLI, published to GHCR. Every repo's CI pulls one image instead of `curl`-installing CLIs per job. Faster, deterministic, one place to bump a version.
+- **Tool-version pinning on local + CI.** Adopt [mise](https://mise.jdx.dev/) (or asdf / devbox / nix) with a committed `.mise.toml` per repo so a contributor's local shell runs the exact same tool versions as CI. Pairs with the CI image above: the image is built from the same `.mise.toml`, so local and CI never drift.
+- **Dagger (or similar) for locally-runnable pipelines.** Move each repo's CI steps into [Dagger](https://dagger.io/) so `dagger call lint` / `dagger call render` runs the same code locally and in GitHub Actions. Trades YAML sprawl for a typed pipeline definition and makes debugging CI failures a local operation.
+- **Semver + release notes.** Right now `skylab-gitops` pushes untagged OCI charts, `skylab-backstage` ships `:latest`, and `skylab-crossplane`'s first OCI package is about to tag without a convention. Pick one — release-please (automated from Conventional Commits), changesets, or plain git tags + GitHub Release notes — before more things ship untagged. Decide once, apply everywhere.
+
 ---
 
 ## This repo
