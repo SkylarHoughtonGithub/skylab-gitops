@@ -99,5 +99,15 @@
       ],
       datasourceTemplate: 'docker',
     },
+    {
+      customType: 'regex',
+      description: 'skylab-backstage image pin',
+      fileMatch: ['^charts/backstage/values\\.yaml$'],
+      matchStrings: [
+        'repository:\\s+(?<depName>skylarhoughtongithub/skylab-backstage)\\s*\\n\\s*tag:\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)',
+      ],
+      registryUrlTemplate: 'https://ghcr.io',
+      datasourceTemplate: 'docker',
+    },
   ],
 }
