@@ -11,7 +11,7 @@ One-time install of Argo CD on an empty cluster. From then on Argo CD syncs itse
 
 ```sh
 # Pin the chart version — bump deliberately via a PR.
-ARGO_CD_CHART_VERSION=7.8.0
+ARGO_CD_CHART_VERSION=7.9.1
 
 kubectl create namespace argocd
 helm repo add argo https://argoproj.github.io/argo-helm
