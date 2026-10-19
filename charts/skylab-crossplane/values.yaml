@@ -3,7 +3,7 @@
 # Bump `package` deliberately after reviewing release notes.
 configuration:
   name: skylab-platform
-  package: ghcr.io/skylarhoughtongithub/skylab-platform:v0.1.0
+  package: ghcr.io/skylarhoughtongithub/skylab-platform:v0.2.0
   packagePullPolicy: IfNotPresent
   revisionActivationPolicy: Automatic
   revisionHistoryLimit: 1
