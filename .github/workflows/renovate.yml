@@ -6,7 +6,8 @@ name: renovate
 
 on:
   schedule:
-    # Hourly during work hours UTC; adjust after a week of real traffic.
+    # Floor cadence for third-party deps; owned repos trigger via
+    # repository_dispatch below for near-instant propagation.
     - cron: '0 */4 * * *'
   workflow_dispatch:
     inputs:
@@ -22,6 +23,11 @@ on:
         default: 'false'
         type: choice
         options: ['false', 'full']
+  # Fired by sibling repos (e.g. skylab-crossplane release.yaml) after
+  # a successful publish, so an owned-repo bump reaches here in seconds
+  # instead of waiting for the next cron tick.
+  repository_dispatch:
+    types: [ghcr-package-published]
 
 permissions:
   contents: write
