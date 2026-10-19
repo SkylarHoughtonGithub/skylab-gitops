@@ -1,0 +1,9 @@
+# Crossplane Configuration package installed at wave 2. The OCI xpkg is
+# built and published by the skylab-crossplane repo on tagged releases.
+# Bump `package` deliberately after reviewing release notes.
+configuration:
+  name: skylab-platform
+  package: ghcr.io/skylarhoughtongithub/skylab-platform:v0.1.0
+  packagePullPolicy: IfNotPresent
+  revisionActivationPolicy: Automatic
+  revisionHistoryLimit: 1

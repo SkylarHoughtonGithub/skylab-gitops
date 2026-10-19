@@ -1,0 +1,6 @@
+apiVersion: v2
+name: skylab-crossplane
+description: Installs the Skylab Crossplane Configuration package (XRDs and compositions published from skylab-crossplane as an OCI xpkg).
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
