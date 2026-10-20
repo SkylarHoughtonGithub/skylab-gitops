@@ -8,18 +8,23 @@ Wave 10. First workload riding the Skylab `go-service` ComponentDefinition — t
 | OTel                | `OTEL_EXPORTER_OTLP_ENDPOINT` injected to the in-cluster Alloy       |
 | Probes              | `/healthz` liveness + readiness (baked into the ComponentDefinition) |
 | Backstage           | Entity page resolves kubernetes-id `mechatracker`; argocd + grafana  |
+| Postgres (interim)  | Dev-only StatefulSet in the same Application; retires in Phase 2     |
 
-## Not running yet
+## Interim decisions
 
-This Application is a shape proof, not a running deployment. The `go-service` ComponentDefinition today only accepts `image` / `replicas` / `port` / `otelEndpoint` / `otelInsecure` parameters — it has no `env` or `envFrom` support. mechatracker needs `DATABASE_URL`, `SESSION_SIGNING_KEY`, and (`GOOGLE_CLIENT_ID` or `DEV_AUTH_BYPASS=true`) at startup; without them `config.validate()` fails and the pod `CrashLoopBackOff`s.
+The three gaps the first revision of this file called out are now closed with pragmatic shortcuts. These are all dev-only and get replaced before anything stateful ships:
 
-Three follow-up PRs make this actually run:
+- **Dev-only Postgres.** A plain `postgres:17-alpine` StatefulSet with a 10Gi PVC and static credentials in `mechatracker-postgres` Secret. The password is in Git — fine inside an isolated dev namespace, wrong anywhere else. Phase 2 (database golden-path template) replaces this block with a Crossplane `postgres` XR; at that point the Secret, StatefulSet, Service, and PVC all come out and the `api` component's `envFrom` points at the XR's connection secret.
+- **DEV_AUTH_BYPASS=true.** Lets the pod come up without wiring a Google OAuth client ID + session signing key. The config validator rejects this flag outside `ENV=development`, so both land together in the api component's `env`.
+- **Migrations run manually.** The distroless API image doesn't bundle `migrate`. For first boot, exec a one-off:
+  ```sh
+  kubectl -n mechatracker run migrate \
+    --rm -it --restart=Never --image=migrate/migrate:v4.18.1 \
+    -- -path=/migrations -database "$DATABASE_URL" up
+  ```
+  (The migrations themselves aren't on-cluster yet; Phase 2's database template adds a migrate Job.)
 
-1. **`charts/kubevela-defs`**: extend `go-service` ComponentDefinition to accept `env: [...]` and `envFrom: [...]` parameters.
-2. **Postgres in-cluster**: either a `postgres` XR via Crossplane (Phase 2) or a scaffolded StatefulSet while the XR waits for cloud credentials.
-3. **mechatracker `web/`**: Clerk → Google OAuth migration lands separately in the mechatracker repo; once done, a second component block (frontend) joins this Application.
-
-Until (1) lands, keeping `components.mechatracker.enabled: false` in `clusters/skylab-dev.yaml` is correct — turning it on now just produces a crashlooping pod.
+Once the Phase 2 database template lands, these three shortcuts all retire in one PR.
 
 ## Replacing this
 

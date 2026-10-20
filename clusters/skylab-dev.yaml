@@ -68,6 +68,13 @@ components:
   demo-service:
     enabled: true
 
+  # Second workload — reference app for the Backstage go-service template.
+  # Ships with a dev-only Postgres (static creds) and DEV_AUTH_BYPASS=true
+  # so the pod comes up without external Google credentials; see
+  # workloads/mechatracker/README.md for which pieces retire in Phase 2.
+  mechatracker:
+    enabled: true
+
   # Default-off in dev until their external prereqs are stubbed:
   #   crossplane / crossplane-providers    — need cloud credentials
   #   gitea / act-runner                   — act-runner needs a token Secret
