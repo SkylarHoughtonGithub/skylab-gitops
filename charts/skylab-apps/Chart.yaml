@@ -2,5 +2,5 @@ apiVersion: v2
 name: skylab-apps
 description: Renders Argo CD Applications and AppProjects for the Skylab platform. One Application per enabled component, with sync-wave annotations.
 type: application
-version: 0.1.13
-appVersion: "0.1.13"
+version: 0.1.14
+appVersion: "0.1.14"
