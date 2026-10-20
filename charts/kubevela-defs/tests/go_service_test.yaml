@@ -1,0 +1,79 @@
+suite: go-service ComponentDefinition
+templates:
+  - templates/componentdefinition-go-service.yaml
+
+tests:
+  - it: renders by default
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ComponentDefinition
+      - equal:
+          path: apiVersion
+          value: core.oam.dev/v1beta1
+      - equal:
+          path: metadata.name
+          value: go-service
+      - equal:
+          path: metadata.namespace
+          value: vela-system
+
+  - it: omits when componentDefinitions.goService.enabled is false
+    set:
+      componentDefinitions.goService.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: honors a custom namespace
+    set:
+      namespace.name: platform-system
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: platform-system
+
+  - it: embeds the OTel env defaults in the CUE template
+    asserts:
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'OTEL_EXPORTER_OTLP_ENDPOINT.*parameter\.otelEndpoint'
+
+  - it: exposes env and envFrom parameters in the CUE template
+    asserts:
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'env: \*\[\] \| \[\.\.\.\{'
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'envFrom: \*\[\] \| \[\.\.\.\{'
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'secretKeyRef\?'
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'configMapKeyRef\?'
+
+  - it: appends user env after the baked-in OTel env
+    asserts:
+      - matchRegex:
+          path: spec.schematic.cue.template
+          # The user `env` list is concatenated onto the OTel baseline;
+          # order matters so OTel vars stay first (predictable for ops).
+          pattern: '\] \+ parameter\.env'
+
+  - it: conditionally includes envFrom only when non-empty
+    asserts:
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'if len\(parameter\.envFrom\) > 0'
+
+  - it: declares the Deployment workload target
+    asserts:
+      - equal:
+          path: spec.workload.definition.apiVersion
+          value: apps/v1
+      - equal:
+          path: spec.workload.definition.kind
+          value: Deployment
