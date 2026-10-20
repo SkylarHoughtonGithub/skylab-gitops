@@ -8,4 +8,4 @@ dependencies:
   - name: vela-core
     repository: https://kubevela.github.io/charts
     # Pin deliberately; bump via a PR after reviewing release notes.
-    version: 1.9.11
+    version: 1.11.0
