@@ -8,4 +8,4 @@ dependencies:
   - name: trust-manager
     repository: https://charts.jetstack.io
     # Pin deliberately; bump via a PR after reviewing release notes.
-    version: v0.15.0
+    version: v0.25.0
