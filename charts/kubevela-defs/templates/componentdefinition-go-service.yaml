@@ -8,7 +8,8 @@ metadata:
     definition.oam.dev/description: >-
       Skylab opinionated Go service. Thin wrapper around webservice that
       bakes in OTel env (to in-cluster Alloy), skylab.io/system labels,
-      and /healthz liveness + readiness probes.
+      and /healthz liveness + readiness probes. Workloads add their own
+      env + envFrom via the `env` and `envFrom` parameters.
 spec:
   workload:
     definition:
@@ -29,6 +30,40 @@ spec:
           // Marks the OTLP connection as insecure (plaintext). Flip to
           // false once Alloy fronts an mTLS listener.
           otelInsecure: *"true" | string
+          // Extra env vars appended to the baked-in OTel env. Names must
+          // not collide with OTEL_* — the definition does not dedupe.
+          env: *[] | [...{
+            name:   string
+            value?: string
+            valueFrom?: {
+              secretKeyRef?: {
+                name:      string
+                key:       string
+                optional?: bool
+              }
+              configMapKeyRef?: {
+                name:      string
+                key:       string
+                optional?: bool
+              }
+              fieldRef?: {
+                fieldPath: string
+              }
+            }
+          }]
+          // Bulk env from Secret / ConfigMap. Each entry projects every
+          // key as an env var; use `prefix` to namespace a projection.
+          envFrom: *[] | [...{
+            prefix?: string
+            secretRef?: {
+              name:      string
+              optional?: bool
+            }
+            configMapRef?: {
+              name:      string
+              optional?: bool
+            }
+          }]
         }
 
         output: {
@@ -58,7 +93,10 @@ spec:
                   {name: "OTEL_SERVICE_NAME", value:          context.name},
                   {name: "OTEL_EXPORTER_OTLP_ENDPOINT", value: parameter.otelEndpoint},
                   {name: "OTEL_EXPORTER_OTLP_INSECURE", value: parameter.otelInsecure},
-                ]
+                ] + parameter.env
+                if len(parameter.envFrom) > 0 {
+                  envFrom: parameter.envFrom
+                }
                 livenessProbe: httpGet: {
                   path: "/healthz"
                   port: parameter.port
