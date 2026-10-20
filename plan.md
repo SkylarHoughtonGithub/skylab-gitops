@@ -93,7 +93,12 @@ Shared tooling and conventions that span every repo (gitops, terraform, backstag
 - **Reusable CI image.** Bake a container with pinned versions of `crossplane`, `kubeconform`, `helm`, `ct`, `helm-unittest`, `task`, `tflint`, `trivy`, and the Argo CD CLI, published to GHCR. Every repo's CI pulls one image instead of `curl`-installing CLIs per job. Faster, deterministic, one place to bump a version.
 - **Tool-version pinning on local + CI.** Adopt [mise](https://mise.jdx.dev/) (or asdf / devbox / nix) with a committed `.mise.toml` per repo so a contributor's local shell runs the exact same tool versions as CI. Pairs with the CI image above: the image is built from the same `.mise.toml`, so local and CI never drift.
 - **Dagger (or similar) for locally-runnable pipelines.** Move each repo's CI steps into [Dagger](https://dagger.io/) so `dagger call lint` / `dagger call render` runs the same code locally and in GitHub Actions. Trades YAML sprawl for a typed pipeline definition and makes debugging CI failures a local operation.
-- **Semver + release notes.** Right now `skylab-gitops` pushes untagged OCI charts, `skylab-backstage` ships `:latest`, and `skylab-crossplane`'s first OCI package is about to tag without a convention. Pick one — release-please (automated from Conventional Commits), changesets, or plain git tags + GitHub Release notes — before more things ship untagged. Decide once, apply everywhere.
+- **Semver + release notes.** **Decided: release-please + Conventional Commits**, applied across every workload/platform repo. `skylab-backstage` already runs it (commit `0bd1048`, Oct 2026, `release-type: simple`). The rest wire in next:
+  - `skylab-gitops` — monorepo manifest with one package per chart under `charts/` (`release-type: helm`). Flip `.github/ct.yaml` to `check-version-increment: false` the same PR, since release-please owns Chart.yaml bumps and ct lint would otherwise fight that model. Commit scopes: `feat(skylab-apps): ...`, `fix(kubevela-defs): ...`, etc.
+  - `skylab-crossplane` — `release-type: simple` at root; `plan.md` already describes this and the xpkg release workflow.
+  - `skylab-terraform` — `release-type: simple` at root; module-level versioning deferred until modules are consumed via remote refs.
+  - `mechatracker` — `release-type: go` at root; stamp into the API binary via the existing `-X main.version=${VERSION}` Dockerfile ARG.
+  Config shape per repo: `release-please-config.json`, `.release-please-manifest.json`, `.github/workflows/release-please.yaml`.
 
 ---
 
