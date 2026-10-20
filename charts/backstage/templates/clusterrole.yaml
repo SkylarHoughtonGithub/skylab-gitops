@@ -65,5 +65,37 @@ rules:
   - apiGroups: ["pkg.crossplane.io"]
     resources:
       - providers
+      - configurations
+      - functions
+    verbs: ["get", "list", "watch"]
+  # Argo CD resources so entity pages can show the Application / AppProject
+  # that owns the workload (the ArgoCD plugin itself talks to argocd-server,
+  # but the K8s plugin surfaces the CRs on the entity page too).
+  - apiGroups: ["argoproj.io"]
+    resources:
+      - applications
+      - appprojects
+    verbs: ["get", "list", "watch"]
+  # cert-manager — workloads request certs via Certificate (see demo-service).
+  - apiGroups: ["cert-manager.io"]
+    resources:
+      - certificates
+      - certificaterequests
+      - issuers
+      - clusterissuers
+    verbs: ["get", "list", "watch"]
+  # Prometheus Operator — ServiceMonitors / PodMonitors / PrometheusRules
+  # scraped by kube-prometheus-stack and rendered by workloads at wave 10.
+  - apiGroups: ["monitoring.coreos.com"]
+    resources:
+      - servicemonitors
+      - podmonitors
+      - prometheusrules
+    verbs: ["get", "list", "watch"]
+  # Sloth — PrometheusServiceLevel rolls up into burn-rate alerts; shown on
+  # the entity page alongside the ServiceMonitor it SLOs against.
+  - apiGroups: ["sloth.slok.dev"]
+    resources:
+      - prometheusservicelevels
     verbs: ["get", "list", "watch"]
 {{- end }}
