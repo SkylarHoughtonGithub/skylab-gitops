@@ -8,4 +8,4 @@ dependencies:
   - name: kyverno
     repository: https://kyverno.github.io/kyverno/
     # Pin deliberately; bump via a PR after reviewing release notes.
-    version: 3.3.0
+    version: 3.9.1
