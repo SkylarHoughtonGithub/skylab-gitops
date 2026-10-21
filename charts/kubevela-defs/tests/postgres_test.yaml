@@ -1,0 +1,85 @@
+suite: postgres ComponentDefinition
+templates:
+  - templates/componentdefinition-postgres.yaml
+
+tests:
+  - it: renders by default
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ComponentDefinition
+      - equal:
+          path: apiVersion
+          value: core.oam.dev/v1beta1
+      - equal:
+          path: metadata.name
+          value: postgres
+      - equal:
+          path: metadata.namespace
+          value: vela-system
+
+  - it: omits when componentDefinitions.postgres.enabled is false
+    set:
+      componentDefinitions.postgres.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: honors a custom namespace
+    set:
+      namespace.name: platform-system
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: platform-system
+
+  - it: emits an XPostgres XR as the primary resource
+    asserts:
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'apiVersion: "database\.skylab\.io/v1alpha1"'
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'kind:       "XPostgres"'
+
+  - it: writes the user password into a Secret the XR references
+    asserts:
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'name: context\.name \+ "-password"'
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'passwordSecretRef:'
+
+  - it: composes DATABASE_URL via a one-shot Job
+    asserts:
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'composeJob:'
+      - matchRegex:
+          path: spec.schematic.cue.template
+          # The script derives DATABASE_URL from endpoint/port/user/pass.
+          pattern: 'DATABASE_URL="\$\{URL\}"'
+      - matchRegex:
+          path: spec.schematic.cue.template
+          # Script reads the Crossplane-written connection secret.
+          pattern: 'kubectl get secret "\$\{CONN_SECRET\}"'
+
+  - it: scopes compose RBAC to secrets in-namespace
+    asserts:
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'kind:       "Role"'
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'resources: \["secrets"\]'
+      - matchRegex:
+          path: spec.schematic.cue.template
+          pattern: 'verbs: \["get", "create", "patch", "update"\]'
+
+  - it: declares autodetect as the workload type (no single primary workload)
+    asserts:
+      - equal:
+          path: spec.workload.type
+          value: autodetect.core.oam.dev

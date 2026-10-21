@@ -69,10 +69,20 @@ components:
     enabled: true
 
   # Second workload — reference app for the Backstage go-service template.
-  # Ships with a dev-only Postgres (static creds) and DEV_AUTH_BYPASS=true
-  # so the pod comes up without external Google credentials; see
-  # workloads/mechatracker/README.md for which pieces retire in Phase 2.
+  # DEV_AUTH_BYPASS=true so the pod comes up without external Google
+  # credentials. Phase 2 cutover (Oct 2026) moved Postgres out to the
+  # sibling `mechatracker-db` Application below, which needs wave 1
+  # (Crossplane) + real cloud credentials to actually provision. On
+  # dev k3d (no cloud creds), the api pod will fail to start because
+  # the `db-url` secret never materializes — expected until an
+  # EC2/EKS cluster lights up wave 1. See workloads/mechatracker/README.md.
   mechatracker:
+    enabled: true
+
+  # Sibling Postgres Application. Flipped on alongside mechatracker so the
+  # shape is visible even without working Crossplane. The XR stays as a
+  # dangling CR on dev until wave 1 + cloud credentials come up.
+  mechatracker-db:
     enabled: true
 
   # Default-off in dev until their external prereqs are stubbed:

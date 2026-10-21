@@ -185,3 +185,18 @@ components:
     project: workloads
     path: workloads/mechatracker
     sourceType: directory
+
+  # Sibling of `mechatracker` that provisions Postgres via the Skylab
+  # `postgres` ComponentDefinition — matches the shape Backstage's
+  # database golden-path template emits. Lands as a separate Application
+  # so sync/delete lifecycles are independent of the api. Needs wave 1
+  # (crossplane + crossplane-providers) and real cloud credentials to
+  # actually provision; stays off in dev until an EC2/EKS cluster brings
+  # them up.
+  mechatracker-db:
+    enabled: false
+    wave: "10"
+    namespace: mechatracker
+    project: workloads
+    path: workloads/mechatracker-db
+    sourceType: directory
