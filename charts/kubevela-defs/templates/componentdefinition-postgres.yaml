@@ -1,0 +1,207 @@
+{{- if .Values.componentDefinitions.postgres.enabled }}
+apiVersion: core.oam.dev/v1beta1
+kind: ComponentDefinition
+metadata:
+  name: postgres
+  namespace: {{ .Values.namespace.name }}
+  annotations:
+    definition.oam.dev/description: >-
+      Skylab opinionated Postgres. Emits a Crossplane XPostgres XR plus a
+      derived DATABASE_URL secret so app components can envFrom it directly.
+      Composes the URL from the XR's writeConnectionSecretToRef output via a
+      one-shot Job. Dev-only hardcoded password until an ESO-backed path
+      lands.
+spec:
+  workload:
+    # No single primary workload — the XR + Job + output Secret are all
+    # outputs. The composite is a convenient umbrella, not an app.
+    type: autodetect.core.oam.dev
+  schematic:
+    cue:
+      template: |
+        parameter: {
+          // Cloud provider. Picks the composition behind XPostgres.
+          cloud: "aws" | "gcp"
+          // Cloud region (e.g. us-east-1, us-central1).
+          region: string
+          // Postgres major version.
+          version: *"16" | string
+          // Volume size in GB.
+          storageGB: *20 | int
+          // Logical database name created on the instance.
+          databaseName: *"app" | string
+          // Master username.
+          username: *"app" | string
+          // Master password. Dev-only hardcoded for now — flagged in the
+          // template; replace with an ESO ExternalSecret before prod use.
+          password: string
+          // Instance class override. If empty, the XRD defaults
+          // (db.t3.micro for AWS, db-f1-micro for GCP) apply.
+          instanceSize?: string
+          // AWS-only networking inputs. Required when cloud=aws.
+          aws?: {
+            dbSubnetGroupName?: string
+            vpcSecurityGroupIds?: [...string]
+          }
+          // GCP-only networking inputs. Required when cloud=gcp.
+          gcp?: {
+            network?: string
+          }
+          // kubectl image for the DATABASE_URL compose Job. Pinned so
+          // Renovate's helm manager picks it up on new releases.
+          composeImage: *"bitnami/kubectl:1.31.3" | string
+          // sslmode query param on the composed URL. Default `require` so
+          // out-of-the-box deploys get TLS; flip to `disable` only in
+          // isolated test namespaces.
+          sslMode: *"require" | string
+        }
+
+        // Primary output: the user's master password Secret the XR will
+        // reference.
+        output: {
+          apiVersion: "v1"
+          kind:       "Secret"
+          metadata: {
+            name: context.name + "-password"
+            labels: {
+              "app.kubernetes.io/name":       context.name
+              "app.kubernetes.io/managed-by": "kubevela"
+              "skylab.io/system":             context.name
+            }
+          }
+          type: "Opaque"
+          stringData: password: parameter.password
+        }
+
+        outputs: {
+          xr: {
+            apiVersion: "database.skylab.io/v1alpha1"
+            kind:       "XPostgres"
+            metadata: {
+              name: context.name
+              labels: {
+                "app.kubernetes.io/name":       context.name
+                "app.kubernetes.io/managed-by": "kubevela"
+                "skylab.io/system":             context.name
+              }
+            }
+            spec: {
+              cloud:        parameter.cloud
+              region:       parameter.region
+              version:      parameter.version
+              storageGB:    parameter.storageGB
+              databaseName: parameter.databaseName
+              username:     parameter.username
+              passwordSecretRef: {
+                name: context.name + "-password"
+                key:  "password"
+              }
+              if parameter.instanceSize != _|_ {
+                instanceSize: parameter.instanceSize
+              }
+              if parameter.cloud == "aws" && parameter.aws != _|_ {
+                aws: parameter.aws
+              }
+              if parameter.cloud == "gcp" && parameter.gcp != _|_ {
+                gcp: parameter.gcp
+              }
+            }
+          }
+
+          // RBAC for the compose Job: get the Crossplane-written conn
+          // secret, create/patch the derived db-url secret. Namespace-scoped.
+          composeServiceAccount: {
+            apiVersion: "v1"
+            kind:       "ServiceAccount"
+            metadata: name: context.name + "-compose"
+          }
+
+          composeRole: {
+            apiVersion: "rbac.authorization.k8s.io/v1"
+            kind:       "Role"
+            metadata: name: context.name + "-compose"
+            rules: [{
+              apiGroups: [""]
+              resources: ["secrets"]
+              verbs: ["get", "create", "patch", "update"]
+            }]
+          }
+
+          composeRoleBinding: {
+            apiVersion: "rbac.authorization.k8s.io/v1"
+            kind:       "RoleBinding"
+            metadata: name: context.name + "-compose"
+            subjects: [{
+              kind: "ServiceAccount"
+              name: context.name + "-compose"
+            }]
+            roleRef: {
+              kind:     "Role"
+              name:     context.name + "-compose"
+              apiGroup: "rbac.authorization.k8s.io"
+            }
+          }
+
+          // One-shot Job: wait for the XR's writeConnectionSecretToRef
+          // output <name>-conn, compose postgres://user:pass@host:port/db
+          // and write it to <name>-url with key DATABASE_URL. App
+          // components envFrom <name>-url to pick up the URL.
+          //
+          // Password rotation isn't handled — follow-up when the ESO story
+          // lands. If the ComponentDefinition evolves, delete the existing
+          // Job manually to let Argo recreate it (Job.spec is immutable).
+          composeJob: {
+            apiVersion: "batch/v1"
+            kind:       "Job"
+            metadata: {
+              name: context.name + "-compose"
+              labels: {
+                "app.kubernetes.io/name":       context.name
+                "app.kubernetes.io/managed-by": "kubevela"
+                "skylab.io/system":             context.name
+              }
+            }
+            spec: {
+              backoffLimit: 20
+              template: spec: {
+                serviceAccountName: context.name + "-compose"
+                restartPolicy:      "OnFailure"
+                containers: [{
+                  name:  "compose"
+                  image: parameter.composeImage
+                  env: [
+                    {name: "CONN_SECRET", value:   context.name + "-conn"},
+                    {name: "URL_SECRET", value:    context.name + "-url"},
+                    {name: "DATABASE_NAME", value: parameter.databaseName},
+                    {name: "SSL_MODE", value:      parameter.sslMode},
+                  ]
+                  command: ["/bin/sh", "-c"]
+                  args: [#"""
+                    set -eu
+                    echo "waiting for ${CONN_SECRET} to be populated..."
+                    for i in $(seq 1 180); do
+                      if kubectl get secret "${CONN_SECRET}" -o jsonpath='{.data.endpoint}' 2>/dev/null | grep -q .; then
+                        break
+                      fi
+                      sleep 10
+                    done
+                    HOST_RAW=$(kubectl get secret "${CONN_SECRET}" -o jsonpath='{.data.endpoint}' | base64 -d)
+                    # AWS writes endpoint as host:port; GCP writes host only. Strip trailing :port if present.
+                    HOST="${HOST_RAW%%:*}"
+                    PORT=$(kubectl get secret "${CONN_SECRET}" -o jsonpath='{.data.port}' | base64 -d 2>/dev/null || echo 5432)
+                    USER=$(kubectl get secret "${CONN_SECRET}" -o jsonpath='{.data.username}' | base64 -d)
+                    PASS=$(kubectl get secret "${CONN_SECRET}" -o jsonpath='{.data.password}' | base64 -d)
+                    URL="postgres://${USER}:${PASS}@${HOST}:${PORT}/${DATABASE_NAME}?sslmode=${SSL_MODE}"
+                    kubectl create secret generic "${URL_SECRET}" \
+                      --from-literal=DATABASE_URL="${URL}" \
+                      --dry-run=client -o yaml \
+                    | kubectl apply -f -
+                    echo "wrote ${URL_SECRET} with DATABASE_URL"
+                    """#,
+                  ]
+                }]
+              }
+            }
+          }
+        }
+{{- end }}

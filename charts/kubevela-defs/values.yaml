@@ -15,4 +15,13 @@ componentDefinitions:
   goService:
     enabled: true
 
+  # Postgres via Crossplane XPostgres plus a compose Job that derives a
+  # DATABASE_URL secret from the XR's writeConnectionSecretToRef output.
+  # Backstage's database template emits a KubeVela Application using this
+  # component; app components envFrom <name>-url to get DATABASE_URL.
+  #
+  # Dev-only hardcoded password until an ESO-backed path lands.
+  postgres:
+    enabled: true
+
 traitDefinitions: {}

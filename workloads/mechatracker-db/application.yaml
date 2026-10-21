@@ -1,0 +1,50 @@
+# Wave 10. Sibling Application that provisions mechatracker's Postgres via
+# the Skylab `postgres` ComponentDefinition — exactly the shape Backstage's
+# database golden-path template emits when it runs. Hand-written here as the
+# first proof-of-shape; retire once a template run opens the equivalent PR
+# against platform/tenants.
+#
+# Namespace matches the mechatracker Application so the derived db-url
+# secret is in-ns for the api component's envFrom.
+#
+# Prereqs for this to come up:
+#   - skylab-crossplane v0.4.0+ (Postgres XRD) — pinned at wave 2.
+#   - wave 1 (crossplane + crossplane-providers) with AWS or GCP credentials.
+#     Dev k3d has none; this stays staged until an EC2/EKS or GKE cluster
+#     lights it up.
+#
+# The hardcoded dev-only password here is a known weak point; ESO-backed
+# ExternalSecret replacement is the follow-up once ESO stores are wired.
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: mechatracker-db
+  namespace: mechatracker
+  labels:
+    owner: platform
+    skylab.io/system: mechatracker
+    app.kubernetes.io/name: mechatracker
+spec:
+  components:
+    - name: db
+      # Skylab `postgres` ComponentDefinition (charts/kubevela-defs). Emits
+      # an XPostgres XR + a compose Job that derives DATABASE_URL into
+      # <component-name>-url (= db-url here) so the api can envFrom it.
+      type: postgres
+      properties:
+        cloud: aws
+        region: us-east-1
+        version: "16"
+        storageGB: 20
+        databaseName: mechatracker
+        username: mechatracker
+        # Dev-only. Replace with an ESO-backed Secret when stores are wired.
+        password: mechatracker-dev-only
+        aws:
+          # These must point at a DB subnet group + security group that the
+          # chosen EKS cluster can reach. Terraform owns the IAM/networking;
+          # fill these in from stacks/network outputs when the real cluster
+          # comes up.
+          dbSubnetGroupName: REPLACE-ME-db-subnets
+          vpcSecurityGroupIds:
+            - REPLACE-ME-sg-id
