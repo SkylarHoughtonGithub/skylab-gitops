@@ -13,7 +13,7 @@ backstage:
     image:
       registry: ghcr.io
       repository: skylarhoughtongithub/skylab-backstage
-      tag: v1.0.0
+      tag: v1.1.0
       pullPolicy: IfNotPresent
 
     # Backstage reads app-config.yaml from the image; secrets + per-env
