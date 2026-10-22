@@ -1,0 +1,31 @@
+# Homelab overlay for aws-signing-helper. Fill in from Terraform outputs
+# after applying skylab-terraform/stacks/roles-anywhere; see
+# docs/runbooks/live-aws-standup.md for the full standup checklist.
+#
+# Not referenced automatically. Wire via clusters/<name>.yaml:
+#
+#   components:
+#     aws-signing-helper:
+#       enabled: true
+#       extraValueFiles: [values-homelab.yaml]
+
+enabled: true
+
+rolesAnywhere:
+  # terraform output trust_anchor_arn
+  trustAnchorArn: ""
+  # terraform output external_secrets_profile_arn
+  profileArn: ""
+  # terraform output external_secrets_role_arn
+  roleArn: ""
+  region: us-east-1
+
+awsSigningHelper:
+  version: "1.5.0"
+  # Pin the sha256 from the aws_signing_helper 1.5.0 release page before
+  # flipping on. Blank skips the digest check (not for prod).
+  sha256: ""
+
+# certificate.commonName default (aws-signing-helper) must match the
+# Subject condition on the external-secrets role's trust policy — see
+# skylab-terraform/modules/aws-roles-anywhere.
