@@ -46,6 +46,17 @@
       matchDepNames: ['ghcr.io/skylarhoughtongithub/skylab-platform'],
       automerge: true,
     },
+    // charts/backstage/values.yaml splits the image as registry/repository/tag
+    // (the Backstage subchart needs both fields). The customManager below pins
+    // it against ghcr.io correctly, but the built-in helm-values manager also
+    // matches the bare `repository` key and resolves it against Docker Hub,
+    // opening a phantom duplicate PR on every release. Disable helm-values on
+    // this file so the customManager is the single source of truth.
+    {
+      matchFileNames: ['charts/backstage/values.yaml'],
+      matchManagers: ['helm-values'],
+      enabled: false,
+    },
   ],
 
   // Files Renovate doesn't natively understand.
