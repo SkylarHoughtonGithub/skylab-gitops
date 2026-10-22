@@ -1,0 +1,137 @@
+suite: aws-signing-helper refresher
+templates:
+  - templates/serviceaccount.yaml
+  - templates/role.yaml
+  - templates/rolebinding.yaml
+  - templates/certificate.yaml
+  - templates/cronjob.yaml
+
+tests:
+  - it: ServiceAccount is suppressed when disabled
+    template: templates/serviceaccount.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Role is suppressed when disabled
+    template: templates/role.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: CronJob is suppressed when disabled
+    template: templates/cronjob.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: CronJob sync-wave is 0 (same bucket as step-ca and ESO stores lead-in)
+    template: templates/cronjob.yaml
+    set:
+      enabled: true
+      rolesAnywhere.trustAnchorArn: arn:aws:rolesanywhere:us-east-1:111122223333:trust-anchor/aaaa
+      rolesAnywhere.profileArn: arn:aws:rolesanywhere:us-east-1:111122223333:profile/bbbb
+      rolesAnywhere.roleArn: arn:aws:iam::111122223333:role/skylab-external-secrets
+    asserts:
+      - isKind:
+          of: CronJob
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "0"
+      - equal:
+          path: spec.schedule
+          value: "*/10 * * * *"
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
+
+  - it: target Secret coordinates match the ESO AWS ClusterSecretStore defaults
+    template: templates/cronjob.yaml
+    set:
+      enabled: true
+      rolesAnywhere.trustAnchorArn: arn:aws:rolesanywhere:us-east-1:111122223333:trust-anchor/aaaa
+      rolesAnywhere.profileArn: arn:aws:rolesanywhere:us-east-1:111122223333:profile/bbbb
+      rolesAnywhere.roleArn: arn:aws:iam::111122223333:role/skylab-external-secrets
+    asserts:
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: TARGET_SECRET_NAME
+            value: eso-aws-credentials
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: TARGET_SECRET_NAMESPACE
+            value: external-secrets
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: ACCESS_KEY_ID_KEY
+            value: access_key_id
+      - contains:
+          path: spec.jobTemplate.spec.template.spec.containers[0].env
+          content:
+            name: SESSION_TOKEN_KEY
+            value: session_token
+
+  - it: Role is scoped to the single target Secret name
+    template: templates/role.yaml
+    set:
+      enabled: true
+      rolesAnywhere.trustAnchorArn: arn:aws:rolesanywhere:us-east-1:111122223333:trust-anchor/aaaa
+      rolesAnywhere.profileArn: arn:aws:rolesanywhere:us-east-1:111122223333:profile/bbbb
+      rolesAnywhere.roleArn: arn:aws:iam::111122223333:role/skylab-external-secrets
+    asserts:
+      - isKind:
+          of: Role
+      - equal:
+          path: rules[0].resourceNames[0]
+          value: eso-aws-credentials
+      - equal:
+          path: rules[0].resources[0]
+          value: secrets
+
+  - it: Certificate is suppressed when certificate.create is false
+    template: templates/certificate.yaml
+    set:
+      enabled: true
+      certificate.create: false
+      rolesAnywhere.trustAnchorArn: arn:aws:rolesanywhere:us-east-1:111122223333:trust-anchor/aaaa
+      rolesAnywhere.profileArn: arn:aws:rolesanywhere:us-east-1:111122223333:profile/bbbb
+      rolesAnywhere.roleArn: arn:aws:iam::111122223333:role/skylab-external-secrets
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Certificate requests client auth from step-issuer by default
+    template: templates/certificate.yaml
+    set:
+      enabled: true
+      rolesAnywhere.trustAnchorArn: arn:aws:rolesanywhere:us-east-1:111122223333:trust-anchor/aaaa
+      rolesAnywhere.profileArn: arn:aws:rolesanywhere:us-east-1:111122223333:profile/bbbb
+      rolesAnywhere.roleArn: arn:aws:iam::111122223333:role/skylab-external-secrets
+    asserts:
+      - isKind:
+          of: Certificate
+      - equal:
+          path: spec.issuerRef.kind
+          value: StepClusterIssuer
+      - equal:
+          path: spec.issuerRef.name
+          value: skylab-step
+      - equal:
+          path: spec.commonName
+          value: aws-signing-helper
+      - contains:
+          path: spec.usages
+          content: client auth
+
+  - it: fails fast when enabled without a trust anchor ARN
+    template: templates/cronjob.yaml
+    set:
+      enabled: true
+      rolesAnywhere.profileArn: arn:aws:rolesanywhere:us-east-1:111122223333:profile/bbbb
+      rolesAnywhere.roleArn: arn:aws:iam::111122223333:role/skylab-external-secrets
+    asserts:
+      - failedTemplate:
+          errorMessage: ".Values.rolesAnywhere.trustAnchorArn is required when enabled"

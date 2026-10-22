@@ -1,0 +1,99 @@
+namespace:
+  # The target Secret lives in external-secrets ns; the refresher pod runs
+  # alongside it so the Role patching the Secret stays namespace-scoped.
+  create: false
+  name: external-secrets
+
+# Default-off. Enable per cluster once Terraform's roles-anywhere stack is
+# applied and the trust-anchor + profile + role ARNs are plumbed through
+# the cluster values file.
+enabled: false
+
+# Roles Anywhere identity. All four fields come from the
+# skylab-terraform/stacks/roles-anywhere outputs (trust_anchor_arn,
+# external_secrets_profile_arn, external_secrets_role_arn). Region matches
+# the account the role lives in.
+rolesAnywhere:
+  trustAnchorArn: ""
+  profileArn: ""
+  roleArn: ""
+  region: us-east-1
+  # Session duration in seconds. 1h default; Roles Anywhere caps at 12h.
+  durationSeconds: 3600
+
+# Client certificate presented to Roles Anywhere. step-issuer requests it
+# from step-ca; the chain's root is the trust anchor the Terraform stack
+# registered. Default-on because every live install needs a cert here;
+# flip off only if an out-of-band Secret is being mounted instead.
+certificate:
+  create: true
+  secretName: aws-signing-helper-client
+  # CN must match the Subject condition on the role's trust policy
+  # (Terraform's external-secrets module keys off this).
+  commonName: aws-signing-helper
+  duration: 24h
+  renewBefore: 8h
+  issuerRef:
+    name: skylab-step
+    kind: StepClusterIssuer
+    group: certmanager.step.sm
+
+# Target Secret the refresher writes. Keys must match the ESO AWS
+# ClusterSecretStore in charts/external-secrets/values.yaml.
+targetSecret:
+  name: eso-aws-credentials
+  accessKeyIdKey: access_key_id
+  secretAccessKeyKey: secret_access_key
+  sessionTokenKey: session_token
+
+# CronJob cadence. 10 minutes under 1h sessions keeps a comfortable
+# refresh buffer and bounds the first-run delay on install.
+schedule: "*/10 * * * *"
+concurrencyPolicy: Forbid
+successfulJobsHistoryLimit: 1
+failedJobsHistoryLimit: 3
+startingDeadlineSeconds: 300
+
+# aws_signing_helper binary. Downloaded on each run by the init container.
+# Pinned; Renovate custom manager bumps the version + sha256 together.
+awsSigningHelper:
+  version: "1.5.0"
+  # Download URL with {version} substituted at render time.
+  downloadUrlTemplate: "https://rolesanywhere.amazonaws.com/releases/{version}/X86_64/Linux/aws_signing_helper"
+  # SHA-256 of the downloaded binary. Required for supply-chain integrity;
+  # the CronJob fails if the digest doesn't match. Blank skips the check
+  # (do not ship enabled with a blank digest).
+  sha256: ""
+
+# Image for the main container. Needs bash, curl, jq, kubectl. Reuses the
+# same image the cert-manager step bootstrap Job runs on.
+image:
+  repository: alpine/k8s
+  tag: "1.37.1"
+  pullPolicy: IfNotPresent
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
