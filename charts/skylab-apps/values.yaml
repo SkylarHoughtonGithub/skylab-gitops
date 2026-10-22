@@ -76,6 +76,14 @@ components:
     wave: "0"
     namespace: step-ca
     project: platform
+  # Roles Anywhere credential refresher. CronJob that writes short-lived
+  # AWS session creds into eso-aws-credentials for the ESO AWS CSS to read.
+  # Shares external-secrets ns so the Role patching the Secret stays scoped.
+  aws-signing-helper:
+    enabled: false
+    wave: "0"
+    namespace: external-secrets
+    project: platform
   step-issuer:
     enabled: false
     wave: "0"

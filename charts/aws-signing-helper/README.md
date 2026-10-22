@@ -1,0 +1,45 @@
+# aws-signing-helper
+
+Skylab wrapper for the AWS Roles Anywhere credential refresher. The chart ships a `CronJob` that presents a step-ca-issued mTLS cert to Roles Anywhere every 10 minutes and writes the short-lived session credentials into `eso-aws-credentials` — the Secret `charts/external-secrets/templates/clustersecretstore-aws.yaml` reads.
+
+Lands at sync wave `0` so the first write happens before wave 1's ESO AWS `ClusterSecretStore` starts pulling.
+
+## Required inputs
+
+Populate the three Roles Anywhere ARNs from Terraform's `stacks/roles-anywhere` outputs when enabling per cluster:
+
+| values key | Terraform output |
+| --- | --- |
+| `rolesAnywhere.trustAnchorArn` | `trust_anchor_arn` |
+| `rolesAnywhere.profileArn` | `external_secrets_profile_arn` |
+| `rolesAnywhere.roleArn` | `external_secrets_role_arn` |
+| `rolesAnywhere.region` | account region (`us-east-1` default) |
+
+`certificate.commonName` must match the `Subject` condition on the external-secrets role's trust policy — Terraform's `external_secrets` module keys off this CN.
+
+Pin a `awsSigningHelper.sha256` before enabling in prod. Blank skips the digest check, which the fetch init-container warns about loudly.
+
+## Prerequisites in-cluster
+
+- cert-manager + step-issuer healthy, with a `StepClusterIssuer` named `skylab-step` (default). The chart's `Certificate` requests the client cert from it; override `certificate.issuerRef` to point at a different issuer.
+- A reachable `rolesanywhere.<region>.amazonaws.com` endpoint from the pod network.
+
+## Enabling
+
+```yaml
+# clusters/<name>.yaml
+components:
+  aws-signing-helper:
+    enabled: true
+
+aws-signing-helper:
+  enabled: true
+  rolesAnywhere:
+    trustAnchorArn: arn:aws:rolesanywhere:us-east-1:...:trust-anchor/...
+    profileArn:     arn:aws:rolesanywhere:us-east-1:...:profile/...
+    roleArn:        arn:aws:iam::...:role/skylab-external-secrets
+    region: us-east-1
+  awsSigningHelper:
+    version: "1.5.0"
+    sha256: "<pin from release notes>"
+```

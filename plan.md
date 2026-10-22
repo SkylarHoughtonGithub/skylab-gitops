@@ -43,7 +43,7 @@ Humans and agents only ever write to Git; Argo CD is the single path into the cl
 7. **AI layer**: model gateway, HolmesGPT, tack-ai remediation, kagent.
 8. **Portfolio finish**: profile README, pins, ADRs.
 
-## Status (as of 2026-10-21)
+## Status (as of 2026-10-22)
 
 > **Keep this current.** Every substantive change (new wrapper, flipped-on component, infra fix) updates this section and the matching `## Current state` line in `AGENTS.md` as part of the same PR. If the entry you need isn't here, add it rather than leaving the record stale.
 
@@ -64,10 +64,9 @@ All four resources now ship in their wrapper charts as values-gated opt-ins carr
 
 - `charts/cert-manager` — `clusterIssuers.step` (hard-coded KID path, legacy) or `clusterIssuers.step.bootstrap` (PostSync Job that reads KID from step-ca at runtime — the dev path), `clusterIssuers.acme` (needs email + solver) — **off in homelab**
 - `charts/trust-manager` — `bundles.stepCA` — **on** (`charts/trust-manager/values-homelab.yaml`); sources from the step-certificates `-certs` ConfigMap
-- `charts/external-secrets` — `clusterSecretStores.aws` (needs an out-of-band Roles Anywhere credential refresher writing to `eso-aws-credentials`), `clusterSecretStores.gcp` (needs projectID + WIF cluster location/name) — **off**
+- `charts/external-secrets` — `clusterSecretStores.aws` (reads `eso-aws-credentials`, populated by `charts/aws-signing-helper`), `clusterSecretStores.gcp` (needs projectID + WIF cluster location/name) — **off**
+- `charts/aws-signing-helper` — CronJob (wave 0) that presents a step-ca-issued mTLS cert to Roles Anywhere every 10 min and writes session creds into `eso-aws-credentials`. Needs trust-anchor + profile + role ARNs from Terraform's `stacks/roles-anywhere` outputs — **off**
 - `charts/step-ca` — `provisionerSecret` (needs the AWS SM / GCP SM key path) — **off**
-
-Still open: ship the AWS Roles Anywhere credential refresher (`aws_signing_helper` sidecar/Deployment) as a first-class component so the AWS CSS works end to end.
 
 ### Intentionally deferred
 

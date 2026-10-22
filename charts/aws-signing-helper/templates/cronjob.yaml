@@ -1,0 +1,163 @@
+{{- if .Values.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "aws-signing-helper.name" . }}
+  namespace: {{ .Values.namespace.name }}
+  annotations:
+    # Comes up alongside step-ca/step-issuer/trust-manager so the first
+    # Secret write lands before wave 1's AWS ClusterSecretStore starts
+    # pulling creds.
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    {{- include "aws-signing-helper.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  concurrencyPolicy: {{ .Values.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.failedJobsHistoryLimit }}
+  startingDeadlineSeconds: {{ .Values.startingDeadlineSeconds }}
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "aws-signing-helper.labels" . | nindent 12 }}
+        spec:
+          serviceAccountName: {{ include "aws-signing-helper.name" . }}
+          restartPolicy: OnFailure
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          volumes:
+            - name: bin
+              emptyDir: {}
+            - name: tmp
+              emptyDir: {}
+            - name: client-cert
+              secret:
+                secretName: {{ .Values.certificate.secretName }}
+                defaultMode: 0400
+          initContainers:
+            # Pull the pinned aws_signing_helper release into the shared
+            # emptyDir. Fails loudly if the SHA-256 digest doesn't match
+            # when one is configured.
+            - name: fetch-binary
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              securityContext:
+                {{- toYaml .Values.securityContext | nindent 16 }}
+              env:
+                - name: DOWNLOAD_URL
+                  value: {{ include "aws-signing-helper.downloadUrl" . | quote }}
+                - name: EXPECTED_SHA256
+                  value: {{ .Values.awsSigningHelper.sha256 | quote }}
+              volumeMounts:
+                - name: bin
+                  mountPath: /bin-out
+                - name: tmp
+                  mountPath: /tmp
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  dest=/bin-out/aws_signing_helper
+                  echo "Downloading ${DOWNLOAD_URL}"
+                  curl --fail --silent --show-error --location \
+                    --output "${dest}" "${DOWNLOAD_URL}"
+                  chmod +x "${dest}"
+                  if [ -n "${EXPECTED_SHA256}" ]; then
+                    actual=$(sha256sum "${dest}" | awk '{print $1}')
+                    if [ "${actual}" != "${EXPECTED_SHA256}" ]; then
+                      echo "ERROR: sha256 mismatch for aws_signing_helper" >&2
+                      echo "  expected: ${EXPECTED_SHA256}" >&2
+                      echo "  actual:   ${actual}" >&2
+                      exit 1
+                    fi
+                    echo "sha256 ok: ${actual}"
+                  else
+                    echo "WARNING: no EXPECTED_SHA256 configured; skipping digest check"
+                  fi
+          containers:
+            - name: refresh
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              securityContext:
+                {{- toYaml .Values.securityContext | nindent 16 }}
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}
+              env:
+                - name: TRUST_ANCHOR_ARN
+                  value: {{ required ".Values.rolesAnywhere.trustAnchorArn is required when enabled" .Values.rolesAnywhere.trustAnchorArn | quote }}
+                - name: PROFILE_ARN
+                  value: {{ required ".Values.rolesAnywhere.profileArn is required when enabled" .Values.rolesAnywhere.profileArn | quote }}
+                - name: ROLE_ARN
+                  value: {{ required ".Values.rolesAnywhere.roleArn is required when enabled" .Values.rolesAnywhere.roleArn | quote }}
+                - name: AWS_REGION
+                  value: {{ .Values.rolesAnywhere.region | quote }}
+                - name: SESSION_DURATION
+                  value: {{ .Values.rolesAnywhere.durationSeconds | quote }}
+                - name: TARGET_SECRET_NAME
+                  value: {{ .Values.targetSecret.name | quote }}
+                - name: TARGET_SECRET_NAMESPACE
+                  value: {{ .Values.namespace.name | quote }}
+                - name: ACCESS_KEY_ID_KEY
+                  value: {{ .Values.targetSecret.accessKeyIdKey | quote }}
+                - name: SECRET_ACCESS_KEY_KEY
+                  value: {{ .Values.targetSecret.secretAccessKeyKey | quote }}
+                - name: SESSION_TOKEN_KEY
+                  value: {{ .Values.targetSecret.sessionTokenKey | quote }}
+              volumeMounts:
+                - name: bin
+                  mountPath: /opt/bin
+                  readOnly: true
+                - name: client-cert
+                  mountPath: /etc/aws-signing-helper
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  creds=$(/opt/bin/aws_signing_helper credential-process \
+                    --certificate /etc/aws-signing-helper/tls.crt \
+                    --private-key /etc/aws-signing-helper/tls.key \
+                    --trust-anchor-arn "${TRUST_ANCHOR_ARN}" \
+                    --profile-arn "${PROFILE_ARN}" \
+                    --role-arn "${ROLE_ARN}" \
+                    --region "${AWS_REGION}" \
+                    --session-duration "${SESSION_DURATION}")
+
+                  access_key=$(printf '%s' "${creds}" | jq -r '.AccessKeyId')
+                  secret_key=$(printf '%s' "${creds}" | jq -r '.SecretAccessKey')
+                  session_token=$(printf '%s' "${creds}" | jq -r '.SessionToken')
+                  expiration=$(printf '%s' "${creds}" | jq -r '.Expiration')
+
+                  if [ -z "${access_key}" ] || [ "${access_key}" = "null" ]; then
+                    echo "ERROR: aws_signing_helper returned no AccessKeyId" >&2
+                    exit 1
+                  fi
+
+                  # Build the Secret as a YAML doc with the three keys the
+                  # ESO AWS ClusterSecretStore reads, then apply it. Dry-run
+                  # locally so the Secret body never materializes on disk.
+                  kubectl create secret generic "${TARGET_SECRET_NAME}" \
+                    --namespace "${TARGET_SECRET_NAMESPACE}" \
+                    --from-literal="${ACCESS_KEY_ID_KEY}=${access_key}" \
+                    --from-literal="${SECRET_ACCESS_KEY_KEY}=${secret_key}" \
+                    --from-literal="${SESSION_TOKEN_KEY}=${session_token}" \
+                    --dry-run=client -o yaml \
+                  | kubectl apply -f -
+
+                  echo "refreshed ${TARGET_SECRET_NAMESPACE}/${TARGET_SECRET_NAME}; expires at ${expiration}"
+          nodeSelector:
+            {{- toYaml .Values.nodeSelector | nindent 12 }}
+          tolerations:
+            {{- toYaml .Values.tolerations | nindent 12 }}
+          affinity:
+            {{- toYaml .Values.affinity | nindent 12 }}
+{{- end }}

@@ -1,0 +1,24 @@
+{{- if .Values.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "aws-signing-helper.name" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "aws-signing-helper.labels" . | nindent 4 }}
+rules:
+  # Create + patch the single Secret the refresher writes. Scoped by
+  # resourceNames so a compromised pod can't rewrite arbitrary Secrets
+  # in the external-secrets namespace.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "patch", "update"]
+    resourceNames:
+      - {{ .Values.targetSecret.name | quote }}
+  # `create` cannot carry a resourceNames restriction; scope that verb
+  # separately on the resource type with no resourceNames filter, which
+  # Kubernetes requires for the initial create path.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+{{- end }}
