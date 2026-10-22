@@ -26,20 +26,14 @@ Pin a `awsSigningHelper.sha256` before enabling in prod. Blank skips the digest 
 
 ## Enabling
 
+A `values-homelab.yaml` overlay sits beside this file with the Terraform-output fields pre-stubbed and inline comments naming each `terraform output`. Fill in the three ARNs + the sha256 digest, then wire from the cluster file:
+
 ```yaml
 # clusters/<name>.yaml
 components:
   aws-signing-helper:
     enabled: true
-
-aws-signing-helper:
-  enabled: true
-  rolesAnywhere:
-    trustAnchorArn: arn:aws:rolesanywhere:us-east-1:...:trust-anchor/...
-    profileArn:     arn:aws:rolesanywhere:us-east-1:...:profile/...
-    roleArn:        arn:aws:iam::...:role/skylab-external-secrets
-    region: us-east-1
-  awsSigningHelper:
-    version: "1.5.0"
-    sha256: "<pin from release notes>"
+    extraValueFiles: [values-homelab.yaml]
 ```
+
+See `docs/runbooks/live-aws-standup.md` for the full cross-repo standup — Terraform apply → values seeding → ESO flip-on → Crossplane wave 1 → first XR provisioning.
