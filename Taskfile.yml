@@ -20,7 +20,7 @@ version: '3'
 
 vars:
   CLUSTER_NAME: skylab-dev
-  ARGO_CD_CHART_VERSION: 10.10.5
+  ARGO_CD_CHART_VERSION: 10.11.1
   ARGO_CD_NAMESPACE: argocd
   KUBECONTEXT: k3d-{{.CLUSTER_NAME}}
 
