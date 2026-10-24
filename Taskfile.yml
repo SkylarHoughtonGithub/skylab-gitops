@@ -11,6 +11,7 @@
 # Entry points:
 #   task dev:up        # create full dev cluster (skylab-dev) + Argo CD + root ApplicationSet
 #   task dev:down      # delete the dev cluster
+#   task hub:colima    # apply dev/colima.yaml to ~/.colima/default and start the VM
 #   task hub:up        # lean local homelab hub: cluster + Argo CD + root ApplicationSet
 #   task hub:down      # delete the homelab cluster
 #   task hub:ui        # port-forward homelab argocd-server to localhost:8080
@@ -106,6 +107,23 @@ tasks:
   # Argo CD with resource trims. Just enough to run the AWS-standup chain:
   # argo-cd + external-secrets + aws-signing-helper. ~1 GiB in-cluster.
   # ---------------------------------------------------------------------------
+
+  hub:colima:
+    desc: Apply dev/colima.yaml to ~/.colima/default and (re)start Colima
+    cmds:
+      - mkdir -p ~/.colima/default
+      - |
+        if [ -f ~/.colima/default/colima.yaml ] && ! cmp -s dev/colima.yaml ~/.colima/default/colima.yaml; then
+          cp ~/.colima/default/colima.yaml ~/.colima/default/colima.yaml.bak
+          echo "backed up previous config to ~/.colima/default/colima.yaml.bak"
+        fi
+      - cp dev/colima.yaml ~/.colima/default/colima.yaml
+      - |
+        if colima status 2>&1 | grep -q "Running"; then
+          colima restart
+        else
+          colima start
+        fi
 
   hub:up:
     desc: Create k3d homelab hub, install lean Argo CD, apply root ApplicationSet

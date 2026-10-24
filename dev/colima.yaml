@@ -1,0 +1,13 @@
+# Colima VM allocation for the lean Skylab hub.
+#
+# `task hub:colima` copies this into ~/.colima/default/colima.yaml and
+# starts (or restarts) the VM. Any pre-existing config is backed up to
+# colima.yaml.bak.
+#
+# Sized for the AWS standup set — install-time Argo CD + ESO +
+# aws-signing-helper, plus headroom for image churn.
+
+cpu: 4
+memory: 8   # GiB
+disk: 100   # GiB
+runtime: docker
