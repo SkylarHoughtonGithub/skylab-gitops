@@ -9,20 +9,24 @@
 #   - task       (https://taskfile.dev)
 #
 # Entry points:
-#   task dev:up        # create cluster + install Argo CD + apply root ApplicationSet
-#   task dev:down      # delete the k3d cluster
-#   task dev:ui        # port-forward argocd-server to localhost:8080
-#   task dev:password  # print the admin bootstrap password
-#   task dev:status    # cluster + Applications summary
+#   task dev:up        # create full dev cluster (skylab-dev) + Argo CD + root ApplicationSet
+#   task dev:down      # delete the dev cluster
+#   task hub:up        # lean local homelab hub: cluster + Argo CD + root ApplicationSet
+#   task hub:down      # delete the homelab cluster
+#   task hub:ui        # port-forward homelab argocd-server to localhost:8080
+#   task hub:password  # print the admin bootstrap password for homelab
+#   task hub:status    # homelab cluster + Applications summary
 #   task lint          # helm-unittest across every chart
 
 version: '3'
 
 vars:
   CLUSTER_NAME: skylab-dev
+  HUB_CLUSTER_NAME: homelab
   ARGO_CD_CHART_VERSION: 10.11.1
   ARGO_CD_NAMESPACE: argocd
   KUBECONTEXT: k3d-{{.CLUSTER_NAME}}
+  HUB_KUBECONTEXT: k3d-{{.HUB_CLUSTER_NAME}}
 
 tasks:
   default:
@@ -96,6 +100,83 @@ tasks:
     prompt: Delete the {{.CLUSTER_NAME}} k3d cluster? All in-cluster state is lost.
     cmds:
       - k3d cluster delete {{.CLUSTER_NAME}}
+
+  # ---------------------------------------------------------------------------
+  # Lean local homelab hub. One k3d node, no servicelb/traefik/metrics-server,
+  # Argo CD with resource trims. Just enough to run the AWS-standup chain:
+  # argo-cd + external-secrets + aws-signing-helper. ~1 GiB in-cluster.
+  # ---------------------------------------------------------------------------
+
+  hub:up:
+    desc: Create k3d homelab hub, install lean Argo CD, apply root ApplicationSet
+    cmds:
+      - task: hub:cluster
+      - task: hub:argocd
+      - task: hub:register
+      - task: hub:root
+      - 'echo'
+      - 'echo "Homelab hub ready. Next:"'
+      - 'echo "  task hub:ui        -- port-forward argocd-server to localhost:8080"'
+      - 'echo "  task hub:password  -- print the admin bootstrap password"'
+      - 'echo "  task hub:status    -- list Applications"'
+      - 'echo'
+      - 'echo "Then from skylab-terraform:"'
+      - 'echo "  ./scripts/skylab-ca.sh install-k8s aws-signing-helper external-secrets"'
+
+  hub:cluster:
+    desc: Create the k3d homelab cluster (no-op if it already exists)
+    status:
+      - k3d cluster list {{.HUB_CLUSTER_NAME}} >/dev/null 2>&1
+    cmds:
+      - k3d cluster create --config dev/k3d-homelab-config.yaml
+      - kubectl --context {{.HUB_KUBECONTEXT}} wait --for=condition=Ready node --all --timeout=120s
+
+  hub:argocd:
+    desc: Install (or upgrade) lean Argo CD via helm
+    cmds:
+      - kubectl --context {{.HUB_KUBECONTEXT}} create namespace {{.ARGO_CD_NAMESPACE}} --dry-run=client -o yaml | kubectl --context {{.HUB_KUBECONTEXT}} apply -f -
+      - helm repo add argo https://argoproj.github.io/argo-helm --force-update
+      - helm repo update argo
+      - |
+        helm --kube-context {{.HUB_KUBECONTEXT}} upgrade --install argocd argo/argo-cd \
+          --namespace {{.ARGO_CD_NAMESPACE}} \
+          --version {{.ARGO_CD_CHART_VERSION}} \
+          -f bootstrap/argocd-values.yaml \
+          -f bootstrap/argocd-values-lean.yaml \
+          --wait --timeout 10m
+
+  hub:register:
+    desc: Register the homelab cluster as an Argo CD cluster Secret
+    cmds:
+      - kubectl --context {{.HUB_KUBECONTEXT}} apply -f dev/argocd-cluster-secret-homelab.yaml
+
+  hub:root:
+    desc: Apply the root ApplicationSet on homelab
+    cmds:
+      - kubectl --context {{.HUB_KUBECONTEXT}} apply -f bootstrap/root-applicationset.yaml
+
+  hub:ui:
+    desc: Port-forward homelab argocd-server to https://localhost:8080
+    cmds:
+      - kubectl --context {{.HUB_KUBECONTEXT}} -n {{.ARGO_CD_NAMESPACE}} port-forward svc/argocd-server 8080:443
+
+  hub:password:
+    desc: Print the Argo CD admin bootstrap password for homelab
+    cmds:
+      - kubectl --context {{.HUB_KUBECONTEXT}} -n {{.ARGO_CD_NAMESPACE}} get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+      - echo
+
+  hub:status:
+    desc: Show homelab cluster + Applications state
+    cmds:
+      - k3d cluster list {{.HUB_CLUSTER_NAME}}
+      - kubectl --context {{.HUB_KUBECONTEXT}} -n {{.ARGO_CD_NAMESPACE}} get applicationsets,applications
+
+  hub:down:
+    desc: Delete the homelab k3d cluster (destructive)
+    prompt: Delete the {{.HUB_CLUSTER_NAME}} k3d cluster? All in-cluster state is lost.
+    cmds:
+      - k3d cluster delete {{.HUB_CLUSTER_NAME}}
 
   lint:
     desc: Run helm-unittest across every chart that has a tests/ dir

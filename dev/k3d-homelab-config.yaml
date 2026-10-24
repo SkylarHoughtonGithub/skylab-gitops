@@ -1,0 +1,29 @@
+# k3d cluster config for the lean local homelab hub.
+#
+# Usage:
+#   task hub:up      # create cluster, install Argo CD, apply root ApplicationSet
+#   task hub:down    # delete cluster
+#
+# Resolves clusters/homelab.yaml via the root ApplicationSet because the
+# k3d cluster name matches the Argo CD cluster entry name.
+
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: homelab
+servers: 1
+agents: 0
+image: rancher/k3s:v1.31.4-k3s1
+
+options:
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters: ["server:*"]
+      - arg: --disable=servicelb
+        nodeFilters: ["server:*"]
+      - arg: --disable=metrics-server
+        nodeFilters: ["server:*"]
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
