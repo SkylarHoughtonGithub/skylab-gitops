@@ -6,10 +6,11 @@
 # Spin up locally: `task hub:up` (see Taskfile.yml).
 
 components:
-  argo-cd:
-    enabled: true
-    extraValueFiles:
-      - values-lean.yaml
+  # Argo CD is installed out-of-band by `task hub:argocd` and NOT
+  # self-managed on lean mode. Enabling self-management here would spin
+  # up a parallel helm release (the Taskfile's release name differs from
+  # the Application name), doubling pods and triggering DiskPressure on
+  # a single-node k3d. Flip back on only after aligning release names.
   external-secrets:
     enabled: true
   aws-signing-helper:

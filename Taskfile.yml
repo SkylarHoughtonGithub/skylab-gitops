@@ -62,7 +62,7 @@ tasks:
       - helm repo add argo https://argoproj.github.io/argo-helm --force-update
       - helm repo update argo
       - |
-        helm --kube-context {{.KUBECONTEXT}} upgrade --install argocd argo/argo-cd \
+        helm --kube-context {{.KUBECONTEXT}} upgrade --install argo-cd argo/argo-cd \
           --namespace {{.ARGO_CD_NAMESPACE}} \
           --version {{.ARGO_CD_CHART_VERSION}} \
           -f bootstrap/argocd-values.yaml \
@@ -138,7 +138,7 @@ tasks:
       - helm repo add argo https://argoproj.github.io/argo-helm --force-update
       - helm repo update argo
       - |
-        helm --kube-context {{.HUB_KUBECONTEXT}} upgrade --install argocd argo/argo-cd \
+        helm --kube-context {{.HUB_KUBECONTEXT}} upgrade --install argo-cd argo/argo-cd \
           --namespace {{.ARGO_CD_NAMESPACE}} \
           --version {{.ARGO_CD_CHART_VERSION}} \
           -f bootstrap/argocd-values.yaml \
