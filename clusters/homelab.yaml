@@ -1,25 +1,32 @@
-# Per-cluster overrides for the homelab hub.
-# Overlaid on top of charts/skylab-apps/values.yaml and values-<env>.yaml.
+# Homelab hub cluster. Lean mode for the AWS standup: only the three
+# Applications needed to turn Roles Anywhere into usable AWS credentials
+# in-cluster are enabled. Flip the rest back on individually as waves
+# come up (crossplane in wave 1, kubevela/gitea/act-runner in wave 3+).
+#
+# Spin up locally: `task hub:up` (see Taskfile.yml).
 
 components:
   argo-cd:
     enabled: true
-  cert-manager:
-    enabled: true
+    extraValueFiles:
+      - values-lean.yaml
   external-secrets:
     enabled: true
-  # step-ca / step-issuer / trust-manager stay off: trust layer is an
-  # offline root CA managed by skylab-terraform/scripts/skylab-ca.sh.
-  # Leaf certs for workloads land as pre-staged kubernetes.io/tls Secrets.
-  kyverno:
+  aws-signing-helper:
     enabled: true
-  crossplane:
-    enabled: true
-  crossplane-providers:
-    enabled: true
-  kubevela:
-    enabled: true
-  gitea:
-    enabled: true
-  act-runner:
-    enabled: true
+    extraValueFiles: [values-homelab.yaml]
+  # Trust layer: offline root CA managed by skylab-terraform/scripts/skylab-ca.sh.
+  # step-ca / step-issuer / trust-manager stay off; leaf certs land as
+  # pre-staged kubernetes.io/tls Secrets per workload that needs one.
+  #
+  # Deliberately-off for lean mode:
+  #   cert-manager — nothing issues certs on this cluster yet (aws-signing-helper
+  #                  uses a BYO Secret from skylab-ca.sh install-k8s).
+  #   kyverno      — ~500 MiB for a policy engine with no policies in-repo.
+  #   crossplane / crossplane-providers — wave 1; flip on when provisioning cloud XRs.
+  #   kubevela / gitea / act-runner     — wave 3+.
+
+external-secrets:
+  clusterSecretStores:
+    aws:
+      enabled: true

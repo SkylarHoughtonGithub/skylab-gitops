@@ -1,0 +1,54 @@
+# Lean overlay for the Argo CD wrapper chart. Reduces replicas and dials
+# resource requests/limits down for laptop-grade k3d hubs (~550 MiB total
+# request, ~1 GiB total limit across the four controller pods).
+#
+# Flip back to the base chart defaults when running on a real cluster.
+
+argo-cd:
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+
+  server:
+    autoscaling:
+      enabled: false
+    replicas: 1
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+
+  repoServer:
+    autoscaling:
+      enabled: false
+    replicas: 1
+    resources:
+      requests:
+        cpu: 20m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+
+  redis:
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        memory: 64Mi
+
+  applicationSet:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+      limits:
+        memory: 128Mi

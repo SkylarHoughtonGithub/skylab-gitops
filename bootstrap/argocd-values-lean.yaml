@@ -1,0 +1,54 @@
+# Install-time counterpart of charts/argo-cd/values-lean.yaml.
+#
+# bootstrap/argocd-values.yaml goes straight to `helm install argocd` and
+# so uses the upstream chart's top-level keys (no `argo-cd:` wrapper).
+# Keep this file semantically identical to charts/argo-cd/values-lean.yaml
+# under the argo-cd: key so the first self-sync is a no-op.
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+server:
+  autoscaling:
+    enabled: false
+  replicas: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+repoServer:
+  autoscaling:
+    enabled: false
+  replicas: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+redis:
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+applicationSet:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
