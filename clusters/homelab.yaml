@@ -8,14 +8,9 @@ components:
     enabled: true
   external-secrets:
     enabled: true
-  step-ca:
-    enabled: true
-  step-issuer:
-    enabled: true
-  trust-manager:
-    enabled: true
-    extraValueFiles:
-      - values-homelab.yaml
+  # step-ca / step-issuer / trust-manager stay off: trust layer is an
+  # offline root CA managed by skylab-terraform/scripts/skylab-ca.sh.
+  # Leaf certs for workloads land as pre-staged kubernetes.io/tls Secrets.
   kyverno:
     enabled: true
   crossplane:

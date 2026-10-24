@@ -11,6 +11,17 @@
 
 enabled: true
 
+# Leaf cert comes from the offline root CA, not cert-manager. Pre-stage
+# the Secret before enabling this chart:
+#
+#   skylab-terraform/scripts/skylab-ca.sh issue aws-signing-helper
+#   skylab-terraform/scripts/skylab-ca.sh install-k8s aws-signing-helper external-secrets
+#
+# That lands Secret external-secrets/aws-signing-helper-client with
+# tls.crt + tls.key — the CronJob mounts it directly.
+certificate:
+  create: false
+
 rolesAnywhere:
   # terraform output trust_anchor_arn
   trustAnchorArn: ""

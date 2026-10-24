@@ -7,7 +7,7 @@ Everything platform-side is scaffolded and merged — this is the external unblo
 ## Prerequisites
 
 - An AWS account you own, with admin credentials for the one-time bootstrap.
-- A **running step-ca** whose root cert you can export. Dev k3d's step-ca works for a one-shot proof, but every k3d destroy regenerates the root and invalidates the Roles Anywhere trust anchor. For anything persistent, run step-ca in a cluster with a PVC-backed root.
+- `step` CLI installed (`brew install step`). Used only by `scripts/skylab-ca.sh` — no step-ca pod required.
 - Terraform installed locally, AWS creds configured.
 - `kubectl` pointed at the cluster.
 
@@ -20,16 +20,14 @@ cd skylab-terraform
 ( cd stacks/bootstrap && terraform init && terraform apply )
 ( cd stacks/identity  && terraform init && terraform apply )
 
-# Export step-ca's root from the running cluster — Roles Anywhere's
-# trust anchor. The root is published in the step-certificates
-# `-certs` ConfigMap by the init Job.
-kubectl -n step-ca get configmap step-ca-step-certificates-certs \
-  -o jsonpath='{.data.root_ca\.crt}' > /tmp/step-ca-root.pem
+# One-time: generate the Skylab root CA. Private key stays under
+# ~/.skylab-ca (chmod 700); back it up encrypted before relying on it.
+./scripts/skylab-ca.sh init-root
 
 # Register the root + create one profile+role per workload.
 cd stacks/roles-anywhere
 terraform init
-terraform apply -var "step_ca_root_pem=$(cat /tmp/step-ca-root.pem)"
+terraform apply -var "step_ca_root_pem=$(../../scripts/skylab-ca.sh show-root)"
 
 # Capture outputs. You'll paste three ARNs into gitops next.
 terraform output
@@ -48,6 +46,16 @@ Keep `terraform output` open. You need:
 ## 2. gitops — seed values + flip on ESO + refresher
 
 `charts/aws-signing-helper/values-homelab.yaml` ships with blank fields and inline Terraform-output comments. Fill in the three ARNs + the sha256 digest for `aws_signing_helper` 1.5.0 (grab from the release page).
+
+Pre-stage the client cert that the CronJob mounts (BYO Secret — `certificate.create: false` is set in the homelab overlay):
+
+```sh
+cd skylab-terraform
+./scripts/skylab-ca.sh issue aws-signing-helper
+./scripts/skylab-ca.sh install-k8s aws-signing-helper external-secrets
+```
+
+That writes Secret `external-secrets/aws-signing-helper-client` with `tls.crt`/`tls.key`. Rotate before 30d expiry by re-running the same two commands.
 
 Then in your cluster values file:
 
@@ -120,8 +128,9 @@ kubectl -n mechatracker logs deploy/mechatracker-api | head -20
 
 ## Likely trip-ups
 
-- **step-ca root rotation.** Rebuilding dev k3d regenerates the step-ca root; the trust anchor registered in AWS no longer matches and every Roles Anywhere auth fails. Either run step-ca somewhere persistent, or re-apply `stacks/roles-anywhere` with the new PEM.
-- **Trust-policy Subject CN mismatch.** The chart defaults `certificate.commonName: aws-signing-helper`. Terraform's `external_secrets` module keys off this. If you've overridden either side, align them.
+- **Leaf cert expiry.** `skylab-ca.sh issue` writes 30d certs. When one expires, the CronJob logs TLS handshake failures against `rolesanywhere.*.amazonaws.com`. Re-run `issue` + `install-k8s` for that workload; the next CronJob tick picks up the new Secret. Consider a calendar reminder at 25d.
+- **Root key loss.** Losing `~/.skylab-ca/root.key` means every outstanding leaf becomes unrotatable and you re-register a new trust anchor. Back up the directory encrypted (e.g. `tar c | age -e > backup.tar.age`) before relying on it.
+- **Trust-policy Subject CN mismatch.** The chart defaults `certificate.commonName: aws-signing-helper`, and `skylab-ca.sh issue <name>` uses `<name>` as the CN. Terraform's `external_secrets` module keys off this. If you've overridden either side, align them.
 - **sha256 pin skipped.** Don't ship `awsSigningHelper.sha256: ""` to a flipped-on cluster. The chart warns loudly but doesn't block.
 - **ESO before refresher.** If ESO's AWS ClusterSecretStore comes up before the first CronJob run completes, it logs auth errors for 1 cycle. Harmless — it retries. Just know the first ~10 min after flip-on isn't "clean."
 

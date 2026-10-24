@@ -8,11 +8,6 @@
 components:
   cert-manager:
     enabled: true
-    # StepClusterIssuer gets a KID that only exists at runtime. The
-    # bootstrap Job (PostSync hook) reads it from step-ca's ConfigMap
-    # and applies the ClusterIssuer. See charts/cert-manager/values-skylab-dev.yaml.
-    extraValueFiles:
-      - values-skylab-dev.yaml
   external-secrets:
     enabled: true
   kyverno:
@@ -25,16 +20,9 @@ components:
   kubevela-defs:
     enabled: true
 
-  # Trust layer. step-ca's auto-generated admin provisioner is enough for
-  # dev; provisionerSecret stays off (that path needs AWS SM / GCP SM).
-  step-ca:
-    enabled: true
-  step-issuer:
-    enabled: true
-  trust-manager:
-    enabled: true
-    extraValueFiles:
-      - values-skylab-dev.yaml
+  # Trust layer: offline root CA managed by skylab-terraform/scripts/skylab-ca.sh.
+  # step-ca / step-issuer / trust-manager stay off; leaf certs land as
+  # pre-staged kubernetes.io/tls Secrets per workload that needs one.
 
   # Observability. kube-prometheus-stack scrapes metrics; Alloy ships
   # pod logs to Loki; Tempo stores traces (Alloy OTLP forwarding ships
@@ -63,8 +51,11 @@ components:
   backstage:
     enabled: true
 
-  # First real workload. Proves cert-manager (StepClusterIssuer),
-  # Tempo (OTel traces) and Sloth (PrometheusServiceLevel) end-to-end.
+  # First real workload. Proves Tempo (OTel traces) and Sloth
+  # (PrometheusServiceLevel) end-to-end. Its Certificate (StepClusterIssuer)
+  # will stay Pending now that the trust layer is offline-root — expected
+  # until demo-service is switched to a SelfSigned issuer or step-ca comes
+  # back in-cluster.
   demo-service:
     enabled: true
 
