@@ -20,6 +20,11 @@ cd skylab-terraform
 ( cd stacks/bootstrap && terraform init && terraform apply )
 ( cd stacks/identity  && terraform init && terraform apply )
 
+# Managed IAM policy that stacks/roles-anywhere looks up by name for the
+# crossplane_aws role. Must apply before roles-anywhere or the data
+# source fails with "no matching IAM Policy found".
+( cd stacks/crossplane && terraform init && terraform apply )
+
 # One-time: generate the Skylab root CA. Private key stays under
 # ~/.skylab-ca (chmod 700); back it up encrypted before relying on it.
 ./scripts/skylab-ca.sh init-root
