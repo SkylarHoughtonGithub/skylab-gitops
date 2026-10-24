@@ -38,6 +38,13 @@ tests:
           content:
             group: ""
             kind: Namespace
+      # AppProjects must sync before any Application that references
+      # them. argo-cd Application is sync-wave -2; AppProjects use -10
+      # to stay comfortably ahead.
+      - documentIndex: 0
+        equal:
+          path: metadata.annotations["argocd.argoproj.io/sync-wave"]
+          value: "-10"
 
   - it: renders no Applications when nothing is enabled
     template: templates/applications.yaml
