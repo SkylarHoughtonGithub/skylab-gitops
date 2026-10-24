@@ -5,6 +5,10 @@ kind: AppProject
 metadata:
   name: {{ $name }}
   namespace: argocd
+  annotations:
+    # Earlier than any component Application wave (argo-cd is -2) so the
+    # project exists before its referencing Applications are evaluated.
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   description: {{ $project.description | quote }}
   sourceRepos:
