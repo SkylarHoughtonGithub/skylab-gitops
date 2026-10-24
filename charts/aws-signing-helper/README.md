@@ -1,6 +1,6 @@
 # aws-signing-helper
 
-Skylab wrapper for the AWS Roles Anywhere credential refresher. The chart ships a `CronJob` that presents a step-ca-issued mTLS cert to Roles Anywhere every 10 minutes and writes the short-lived session credentials into `eso-aws-credentials` — the Secret `charts/external-secrets/templates/clustersecretstore-aws.yaml` reads.
+Skylab wrapper for the AWS Roles Anywhere credential refresher. The chart ships a `CronJob` that presents an mTLS cert to Roles Anywhere every 10 minutes and writes the short-lived session credentials into `eso-aws-credentials` — the Secret `charts/external-secrets/templates/clustersecretstore-aws.yaml` reads.
 
 Lands at sync wave `0` so the first write happens before wave 1's ESO AWS `ClusterSecretStore` starts pulling.
 
@@ -19,9 +19,15 @@ Populate the three Roles Anywhere ARNs from Terraform's `stacks/roles-anywhere` 
 
 Pin a `awsSigningHelper.sha256` before enabling in prod. Blank skips the digest check, which the fetch init-container warns about loudly.
 
+## Client cert
+
+Two modes, controlled by `certificate.create`:
+
+- **BYO Secret (default for live clusters)**: `certificate.create: false`. Pre-stage a `kubernetes.io/tls` Secret named `aws-signing-helper-client` in the chart's namespace with `tls.crt` + `tls.key`. The offline root CA produces these — see `skylab-terraform/scripts/skylab-ca.sh`.
+- **cert-manager**: `certificate.create: true` plus a reachable `StepClusterIssuer` named `skylab-step`. The chart's `Certificate` requests the leaf from it; override `certificate.issuerRef` for a different issuer. Needs step-ca + step-issuer running.
+
 ## Prerequisites in-cluster
 
-- cert-manager + step-issuer healthy, with a `StepClusterIssuer` named `skylab-step` (default). The chart's `Certificate` requests the client cert from it; override `certificate.issuerRef` to point at a different issuer.
 - A reachable `rolesanywhere.<region>.amazonaws.com` endpoint from the pod network.
 
 ## Enabling
