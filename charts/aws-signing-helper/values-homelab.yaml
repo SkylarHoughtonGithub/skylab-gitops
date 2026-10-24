@@ -24,18 +24,18 @@ certificate:
 
 rolesAnywhere:
   # terraform output trust_anchor_arn
-  trustAnchorArn: ""
+  trustAnchorArn: "arn:aws:rolesanywhere:us-east-2:635314249418:trust-anchor/f2f3484a-7089-4f64-8f40-7b4ee523fc37"
   # terraform output external_secrets_profile_arn
-  profileArn: ""
+  profileArn: "arn:aws:rolesanywhere:us-east-2:635314249418:profile/38d5ad51-2838-4df6-ab37-40d619fd1c22"
   # terraform output external_secrets_role_arn
-  roleArn: ""
-  region: us-east-1
+  roleArn: "arn:aws:iam::635314249418:role/skylab-external-secrets"
+  region: us-east-2
 
 awsSigningHelper:
   version: "1.5.0"
   # Pin the sha256 from the aws_signing_helper 1.5.0 release page before
   # flipping on. Blank skips the digest check (not for prod).
-  sha256: ""
+  sha256: "519717f2408f3191e0ec8b35531c41bf20344b94b292cf1d763df4e6fc93af44"
 
 # certificate.commonName default (aws-signing-helper) must match the
 # Subject condition on the external-secrets role's trust policy — see
