@@ -62,6 +62,10 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
+                  # aws_signing_helper is dynamically linked against glibc;
+                  # alpine/k8s is musl. gcompat provides the glibc dynamic
+                  # linker shim. No-op on non-Alpine images.
+                  command -v apk >/dev/null && apk add --no-cache gcompat >/dev/null
                   dest=/bin-out/aws_signing_helper
                   echo "Downloading ${DOWNLOAD_URL}"
                   curl --fail --silent --show-error --location \
@@ -122,6 +126,8 @@ spec:
                 - -c
                 - |
                   set -euo pipefail
+                  # Match the init container: gcompat for the glibc-linked binary.
+                  command -v apk >/dev/null && apk add --no-cache gcompat >/dev/null
 
                   creds=$(/opt/bin/aws_signing_helper credential-process \
                     --certificate /etc/aws-signing-helper/tls.crt \
