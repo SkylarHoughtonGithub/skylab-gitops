@@ -31,10 +31,19 @@ rolesAnywhere:
   roleArn: "arn:aws:iam::635314249418:role/skylab-external-secrets"
   region: us-east-2
 
-# gcompat is apk-installed at pod start by the chart's inline script to
-# provide the glibc dynamic linker shim. That write needs a writable
-# rootfs, which the chart defaults off. Flip it on here. Follow-up: bake
-# gcompat into a custom image and restore readOnlyRootFilesystem.
+# gcompat is apk-installed at pod start by the chart's inline script.
+# apk needs a writable rootfs AND root privileges (writes to /lib and
+# /var/log/apk.log). Both chart defaults flipped off here, lean cluster
+# only. Follow-up: bake gcompat into a custom image and restore both
+# readOnlyRootFilesystem and runAsNonRoot.
+podSecurityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+  runAsGroup: 0
+  fsGroup: 0
+  seccompProfile:
+    type: RuntimeDefault
+
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false
