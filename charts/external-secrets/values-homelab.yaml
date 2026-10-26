@@ -1,0 +1,16 @@
+# Homelab overlay for external-secrets.
+#
+# Wired via clusters/homelab.yaml:
+#
+#   components:
+#     external-secrets:
+#       enabled: true
+#       extraValueFiles: [values-homelab.yaml]
+#
+# Enables the AWS ClusterSecretStore. The eso-aws-credentials Secret it
+# reads is populated by the aws-signing-helper CronJob (sibling chart).
+
+clusterSecretStores:
+  aws:
+    enabled: true
+    region: us-east-2

@@ -13,6 +13,7 @@ components:
   # a single-node k3d. Flip back on only after aligning release names.
   external-secrets:
     enabled: true
+    extraValueFiles: [values-homelab.yaml]
   aws-signing-helper:
     enabled: true
     extraValueFiles: [values-homelab.yaml]
@@ -26,8 +27,3 @@ components:
   #   kyverno      — ~500 MiB for a policy engine with no policies in-repo.
   #   crossplane / crossplane-providers — wave 1; flip on when provisioning cloud XRs.
   #   kubevela / gitea / act-runner     — wave 3+.
-
-external-secrets:
-  clusterSecretStores:
-    aws:
-      enabled: true
