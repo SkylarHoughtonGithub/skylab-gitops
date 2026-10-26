@@ -33,9 +33,14 @@ rolesAnywhere:
 
 awsSigningHelper:
   version: "1.5.0"
-  # Pin the sha256 from the aws_signing_helper 1.5.0 release page before
-  # flipping on. Blank skips the digest check (not for prod).
-  sha256: "519717f2408f3191e0ec8b35531c41bf20344b94b292cf1d763df4e6fc93af44"
+  # Colima on Apple Silicon runs an aarch64 VM. Override the chart's
+  # x86_64-default download so the init container fetches the arm64
+  # binary; the x86 binary exec-fails under qemu userspace because
+  # the pod image has no multiarch glibc.
+  downloadUrlTemplate: "https://rolesanywhere.amazonaws.com/releases/{version}/Aarch64/Linux/aws_signing_helper"
+  # SHA-256 of the aarch64 binary (differs from the x86_64 digest in
+  # the chart default).
+  sha256: "c01ae38181309a25cb3451c84b3cdaec8e9308ffd0b89015f3c667914050b053"
 
 # certificate.commonName default (aws-signing-helper) must match the
 # Subject condition on the external-secrets role's trust policy — see
