@@ -2,5 +2,5 @@ apiVersion: v2
 name: aws-signing-helper
 description: Skylab wrapper for the AWS Roles Anywhere credential refresher. CronJob presents a step-ca-issued mTLS cert to Roles Anywhere and writes short-lived AWS credentials into the Secret ESO's AWS ClusterSecretStore reads.
 type: application
-version: 0.1.4
+version: 0.1.5
 appVersion: "1.5.0"

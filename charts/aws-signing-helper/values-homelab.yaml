@@ -31,6 +31,16 @@ rolesAnywhere:
   roleArn: "arn:aws:iam::635314249418:role/skylab-external-secrets"
   region: us-east-2
 
+# gcompat is apk-installed at pod start by the chart's inline script to
+# provide the glibc dynamic linker shim. That write needs a writable
+# rootfs, which the chart defaults off. Flip it on here. Follow-up: bake
+# gcompat into a custom image and restore readOnlyRootFilesystem.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop: ["ALL"]
+
 awsSigningHelper:
   version: "1.5.0"
   # Colima on Apple Silicon runs an aarch64 VM. Override the chart's
