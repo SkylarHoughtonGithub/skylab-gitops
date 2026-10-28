@@ -68,9 +68,10 @@ spec:
       type: k8s-objects
       properties:
         objects:
-          # Internal TLS cert from step-ca via step-issuer. Secret lands
-          # as `demo-service-tls`; no app wires it up yet — the point
-          # here is to prove StepClusterIssuer renders a cert end-to-end.
+          # Internal TLS cert via the SelfSigned ClusterIssuer (chart
+          # default). Secret lands as `demo-service-tls`; no app wires
+          # it up — the point is to prove cert-manager renders a cert
+          # end-to-end on a cluster without step-ca.
           - apiVersion: cert-manager.io/v1
             kind: Certificate
             metadata:
@@ -91,9 +92,9 @@ spec:
                 algorithm: ECDSA
                 size: 256
               issuerRef:
-                group: certmanager.step.sm
-                kind: StepClusterIssuer
-                name: step
+                group: cert-manager.io
+                kind: ClusterIssuer
+                name: skylab-selfsigned
 
           # Point Prometheus at the web Service by component label. The
           # scrape path /metrics 404s on nginxdemos/hello, so `up=0` —
