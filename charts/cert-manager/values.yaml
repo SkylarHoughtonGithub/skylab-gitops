@@ -16,6 +16,14 @@ cert-manager:
 # ClusterIssuers. Default-off; enable per cluster once step-ca is live
 # and (for ACME) the solver's DNS or HTTP01 prereqs are in place.
 clusterIssuers:
+  # Self-signed ClusterIssuer. Each Certificate using it gets its own
+  # self-signed cert — no shared trust root, no external deps. Useful
+  # for dev workloads that just want an in-cluster TLS cert to exist.
+  # Default-on because the CR is cheap and self-contained.
+  selfSigned:
+    enabled: true
+    name: skylab-selfsigned
+
   step:
     enabled: false
     # Alternative to a hard-coded kid: a PostSync Job that waits for

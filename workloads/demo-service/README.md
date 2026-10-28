@@ -4,7 +4,7 @@ Wave 10. First real workload — a hand-written KubeVela Application that proves
 
 | Capability                | What this touches                                                        |
 | ------------------------- | ------------------------------------------------------------------------ |
-| cert-manager + step-ca    | `Certificate` from the `step` `StepClusterIssuer` → `demo-service-tls`   |
+| cert-manager              | `Certificate` from the `skylab-selfsigned` `ClusterIssuer` → `demo-service-tls` |
 | KubeVela                  | Renders both `webservice` components (`web`, `tracegen`) and `addons`    |
 | Tempo                     | `tracegen` pushes OTLP traces to `tempo.monitoring.svc:4317`             |
 | kube-prometheus-stack     | ServiceMonitor on `web` produces `up{namespace="demo-service", ...}`     |

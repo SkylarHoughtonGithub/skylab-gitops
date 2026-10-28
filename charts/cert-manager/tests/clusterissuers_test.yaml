@@ -2,9 +2,27 @@ suite: cert-manager ClusterIssuers
 templates:
   - templates/clusterissuer-step.yaml
   - templates/clusterissuer-acme.yaml
+  - templates/clusterissuer-selfsigned.yaml
 
 tests:
-  - it: renders no issuers by default
+  - it: renders the SelfSigned ClusterIssuer by default
+    template: templates/clusterissuer-selfsigned.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ClusterIssuer
+      - equal:
+          path: metadata.name
+          value: skylab-selfsigned
+      - equal:
+          path: apiVersion
+          value: cert-manager.io/v1
+
+  - it: suppresses the SelfSigned ClusterIssuer when disabled
+    template: templates/clusterissuer-selfsigned.yaml
+    set:
+      clusterIssuers.selfSigned.enabled: false
     asserts:
       - hasDocuments:
           count: 0
