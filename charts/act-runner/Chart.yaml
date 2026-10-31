@@ -8,4 +8,4 @@ dependencies:
   - name: actions
     repository: https://dl.gitea.com/charts/
     # Pin deliberately; bump via a PR after reviewing release notes.
-    version: 0.1.2
+    version: 0.1.3
