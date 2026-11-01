@@ -69,7 +69,7 @@ awsSigningHelper:
 # same image the cert-manager step bootstrap Job runs on.
 image:
   repository: alpine/k8s
-  tag: "1.37.1"
+  tag: "1.37.2"
   pullPolicy: IfNotPresent
 
 resources:
