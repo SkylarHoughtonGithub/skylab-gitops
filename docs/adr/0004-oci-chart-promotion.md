@@ -57,4 +57,6 @@ Per-cluster `clusters/<name>.yaml` chooses the deployment mode for each componen
 
 ## Status of implementation
 
-OCI push to GHCR on `main` is **deferred CI work** as of 2026-11-05 ([`plan.md#deferred-ci-work-in-skylab-gitops`](../../plan.md)). The decision is Accepted; the workflow that enacts it has not landed yet. Dev currently runs on `path` tracking; no cluster uses the `oci` source mode yet. When the workflow lands, the first version bumps will set the starting point for each chart's OCI series.
+OCI push to GHCR on `main` landed in `.github/workflows/charts.yml` on 2026-11-05 as the `publish` job that runs after `lint`, `unittest`, and `kubeconform`. The job iterates every wrapper chart, reads the version from `Chart.yaml`, and pushes to `oci://ghcr.io/skylarhoughtongithub/charts/<name>` if that exact version isn't already published — idempotent across re-runs. Dev clusters still use `path` tracking by default; no cluster uses the `oci` source mode yet. Flipping a cluster to version-pinned mode is a per-cluster config change in `clusters/<name>.yaml`.
+
+Release-please integration (monorepo manifest, `release-type: helm`, Chart.yaml bumps driven by Conventional Commits) remains a cross-repo follow-up tracked in `plan.md`.
