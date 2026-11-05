@@ -12,6 +12,10 @@ Format follows [Michael Nygard's template](https://cognitect.com/blog/2011/11/15
 | [0002](0002-sync-waves-with-application-health-check.md) | Sync waves with a restored Application health check | Accepted |
 | [0003](0003-cluster-as-data.md) | Cluster-as-data instead of path-based environments | Accepted |
 | [0004](0004-oci-chart-promotion.md) | Promotion by OCI chart version | Accepted |
+| [0005](0005-layer-ownership.md) | Layer ownership: Argo CD, Crossplane, KubeVela | Accepted |
+| [0006](0006-hub-and-spoke-fleet.md) | Hub-and-spoke fleet with cloud-agnostic APIs | Accepted |
+| [0007](0007-one-gitops-repo-platform-vs-tenants.md) | One GitOps repo on GitHub; tenants live on Gitea | Accepted |
+| [0008](0008-label-placement-now-ocm-later.md) | Label placement now, Open Cluster Management later | Accepted |
 
 ## Scope
 
